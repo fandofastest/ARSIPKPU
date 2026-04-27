@@ -21,7 +21,13 @@ type ListResp =
 
 type CreateResp =
   | { success: true; data: UserItem }
-  | { error: string; details?: unknown };
+  | {
+      error: string;
+      details?: {
+        formErrors?: string[];
+        fieldErrors?: Record<string, string[] | undefined>;
+      };
+    };
 
 type UpdateResp =
   | { success: true; data: UserItem }
@@ -78,6 +84,25 @@ export default function UsersPage() {
       .finally(() => setLoading(false));
   }
 
+  function formatCreateUserError(json: CreateResp): string {
+    if (!('error' in json)) return 'Failed to create user';
+    const details = json.details;
+    if (!details) return json.error;
+    const fieldErrors = details.fieldErrors || {};
+    const msgMap: Array<[string, string]> = [
+      ['nama', 'Nama wajib diisi'],
+      ['nip', 'NIP wajib diisi (3-40 karakter)'],
+      ['phone', 'Phone wajib diisi (minimal 5 karakter)'],
+      ['password', 'Password minimal 6 karakter'],
+      ['role', 'Role harus dipilih']
+    ];
+    const hits = msgMap
+      .filter(([key]) => Array.isArray(fieldErrors[key]) && fieldErrors[key]!.length)
+      .map(([, msg]) => msg);
+    if (hits.length) return `Input tidak valid: ${hits.join(', ')}`;
+    return json.error;
+  }
+
   useEffect(() => {
     refresh();
   }, []);
@@ -116,19 +141,19 @@ export default function UsersPage() {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nama: createNama,
-          nip: createNip,
+          nama: createNama.trim(),
+          nip: createNip.trim(),
           golongan: createGolongan.trim() ? createGolongan.trim() : undefined,
           jabatan: createJabatan.trim() ? createJabatan.trim() : undefined,
-          phone: createPhone,
-          password: createPassword,
+          phone: createPhone.trim(),
+          password: createPassword.trim(),
           role: createRole,
           unit: createUnit.trim() ? createUnit.trim() : undefined
         })
       });
       const json = (await res.json()) as CreateResp;
       if (!res.ok) {
-        setError('error' in json ? json.error : 'Failed to create user');
+        setError(formatCreateUserError(json));
         return;
       }
       setCreateOpen(false);
@@ -347,18 +372,35 @@ export default function UsersPage() {
 
               <div style={{ height: 12 }} />
 
+              <div
+                style={{
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 10,
+                  padding: 10,
+                  color: 'var(--muted)',
+                  fontSize: 13
+                }}
+              >
+                Wajib diisi: Nama, NIP (3-40), Phone (min 5), Password (min 6), Role.
+                <br />
+                Boleh kosong: Unit, Golongan, Jabatan.
+              </div>
+
+              <div style={{ height: 12 }} />
+
               <div className="row" style={{ alignItems: 'end' }}>
                 <label style={{ flex: 1, minWidth: 220 }}>
-                  Nama
-                  <input className="input" value={createNama} onChange={(e) => setCreateNama(e.target.value)} />
+                  Nama (wajib)
+                  <input className="input" value={createNama} onChange={(e) => setCreateNama(e.target.value)} placeholder="Contoh: Budi Santoso" />
                 </label>
                 <label style={{ flex: 1, minWidth: 220 }}>
-                  NIP
-                  <input className="input" value={createNip} onChange={(e) => setCreateNip(e.target.value)} />
+                  NIP (wajib, 3-40)
+                  <input className="input" value={createNip} onChange={(e) => setCreateNip(e.target.value)} placeholder="Contoh: 199001012020121001" />
                 </label>
                 <label style={{ flex: 1, minWidth: 220 }}>
-                  Phone
-                  <input className="input" value={createPhone} onChange={(e) => setCreatePhone(e.target.value)} />
+                  Phone (wajib, min 5)
+                  <input className="input" value={createPhone} onChange={(e) => setCreatePhone(e.target.value)} placeholder="Contoh: 08123456789" />
                 </label>
               </div>
 
@@ -366,7 +408,7 @@ export default function UsersPage() {
 
               <div className="row" style={{ alignItems: 'end' }}>
                 <label style={{ flex: 1, minWidth: 220 }}>
-                  Password
+                  Password (wajib, min 6)
                   <input
                     className="input"
                     type="password"
@@ -383,15 +425,15 @@ export default function UsersPage() {
                   </select>
                 </label>
                 <label style={{ flex: 1, minWidth: 240 }}>
-                  Unit
-                  <input className="input" value={createUnit} onChange={(e) => setCreateUnit(e.target.value)} />
+                  Unit (opsional)
+                  <input className="input" value={createUnit} onChange={(e) => setCreateUnit(e.target.value)} placeholder="Contoh: Sekretariat" />
                 </label>
                 <label style={{ width: 140 }}>
-                  Golongan
+                  Golongan (opsional)
                   <input className="input" value={createGolongan} onChange={(e) => setCreateGolongan(e.target.value)} />
                 </label>
                 <label style={{ flex: 1, minWidth: 220 }}>
-                  Jabatan
+                  Jabatan (opsional)
                   <input className="input" value={createJabatan} onChange={(e) => setCreateJabatan(e.target.value)} />
                 </label>
               </div>
@@ -402,7 +444,13 @@ export default function UsersPage() {
                 className="btn"
                 type="button"
                 onClick={createUser}
-                disabled={!createNama || !createNip || !createPhone || createPassword.length < 6 || createSaving}
+                disabled={
+                  !createNama.trim() ||
+                  createNip.trim().length < 3 ||
+                  createPhone.trim().length < 5 ||
+                  createPassword.trim().length < 6 ||
+                  createSaving
+                }
               >
                 {createSaving ? 'Saving…' : 'Create'}
               </button>

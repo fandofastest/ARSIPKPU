@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
+
+export const dynamic = 'force-dynamic';
 
 type ArchiveItem = {
   _id: string;
@@ -13,6 +15,8 @@ type ArchiveItem = {
   type?: string;
   tags?: string[];
   isPublic?: boolean;
+  visibility?: 'public' | 'private' | 'shared';
+  sharedWith?: Array<{ userId: string; name: string; phone: string; role: 'viewer' | 'editor' }>;
   docNumber?: string;
   docDate?: string | null;
   docKind?: string;
@@ -25,6 +29,12 @@ type ArchiveItem = {
   ocrStatus?: 'pending' | 'processing' | 'done' | 'failed';
   ocrError?: string;
   ocrUpdatedAt?: string | null;
+  gdriveFileId?: string;
+  gdriveLink?: string;
+  gdriveSyncedAt?: string | null;
+  gdriveSyncError?: string;
+  searchSnippet?: string;
+  trashedAt?: string | null;
   uploadedBy: { userId?: string; name: string; phone: string };
   createdAt: string;
 };
@@ -37,6 +47,14 @@ type ListResp =
     }
   | { error: string };
 
+type TrashResp =
+  | {
+      success: true;
+      data: ArchiveItem[];
+      meta: { page: number; limit: number; total: number; totalPages: number; retentionDays: number };
+    }
+  | { error: string };
+
 type MeResp =
   | { success: true; data: { userId: string; name: string; phone: string; role: string } }
   | { error: string };
@@ -44,6 +62,23 @@ type MeResp =
 type UpdateResp =
   | { success: true; data: ArchiveItem }
   | { error: string; details?: unknown };
+
+type ShareResp =
+  | {
+      success: true;
+      data: {
+        visibility: 'public' | 'private' | 'shared';
+        sharedWith: Array<{ userId: string; name: string; phone: string; role: 'viewer' | 'editor' }>;
+      };
+    }
+  | { error: string };
+
+type UserSearchResp =
+  | {
+      success: true;
+      data: Array<{ userId: string; name: string; phone: string; nip?: string; role?: string }>;
+    }
+  | { error: string };
 
 type CategoryItem = {
   _id: string;
@@ -59,6 +94,17 @@ type CategoriesResp =
   | { success: true; data: CategoryItem[] }
   | { error: string };
 
+type UploadFileOverride = {
+  title: string;
+  docNumber: string;
+  docDate: string;
+  docKind: string;
+  category: string;
+  description: string;
+  tags: string;
+  visibility: 'inherit' | 'public' | 'private';
+};
+
 function categoryLabel(c: CategoryItem) {
   return (c.path && c.path.trim()) || c.name;
 }
@@ -67,7 +113,34 @@ function sortCategory(a: CategoryItem, b: CategoryItem) {
   return categoryLabel(a).localeCompare(categoryLabel(b));
 }
 
-export default function FilesPage() {
+function filenameWithoutExt(name: string) {
+  return name.replace(/\.[^/.]+$/, '');
+}
+
+function itemVisibility(it: ArchiveItem) {
+  if (it.visibility === 'public' || it.visibility === 'private' || it.visibility === 'shared') return it.visibility;
+  return it.isPublic === false ? 'private' : 'public';
+}
+
+function itemShareRole(it: ArchiveItem, userId?: string) {
+  if (!userId) return null;
+  const found = (it.sharedWith || []).find((x) => x.userId === userId);
+  return found?.role || null;
+}
+
+function isOwnerItem(it: ArchiveItem, me: { userId: string; phone: string; role: string } | null) {
+  if (!me?.userId) return false;
+  return it.uploadedBy?.userId ? String(it.uploadedBy.userId) === me.userId : it.uploadedBy?.phone === me.phone;
+}
+
+function canManageItem(it: ArchiveItem, me: { userId: string; phone: string; role: string } | null) {
+  if (!me || me.role === 'viewer') return false;
+  const isOwner = isOwnerItem(it, me);
+  if (isOwner) return true;
+  return itemShareRole(it, me.userId) === 'editor';
+}
+
+function FilesPageContent() {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const searchParams = useSearchParams();
 
@@ -112,13 +185,13 @@ export default function FilesPage() {
   const [uploadDocNumber, setUploadDocNumber] = useState('');
   const [uploadDocDate, setUploadDocDate] = useState('');
   const [uploadDocKind, setUploadDocKind] = useState('');
-  const [uploadUnitSender, setUploadUnitSender] = useState('');
-  const [uploadUnitRecipient, setUploadUnitRecipient] = useState('');
   const [uploadCategory, setUploadCategory] = useState('');
   const [uploadRootCategorySlug, setUploadRootCategorySlug] = useState('');
   const [uploadDesc, setUploadDesc] = useState('');
   const [uploadTags, setUploadTags] = useState('');
   const [uploadPrivate, setUploadPrivate] = useState(false);
+  const [uploadHybridEnabled, setUploadHybridEnabled] = useState(false);
+  const [uploadOverrides, setUploadOverrides] = useState<UploadFileOverride[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -131,10 +204,9 @@ export default function FilesPage() {
   const [editDocNumber, setEditDocNumber] = useState('');
   const [editDocDate, setEditDocDate] = useState('');
   const [editDocKind, setEditDocKind] = useState('');
-  const [editUnitSender, setEditUnitSender] = useState('');
-  const [editUnitRecipient, setEditUnitRecipient] = useState('');
   const [editCategory, setEditCategory] = useState('');
   const [editRootCategorySlug, setEditRootCategorySlug] = useState('');
+  const [editVisibilityAtOpen, setEditVisibilityAtOpen] = useState<'public' | 'private' | 'shared'>('public');
   const [editSaving, setEditSaving] = useState(false);
 
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -145,6 +217,24 @@ export default function FilesPage() {
   const [detailItem, setDetailItem] = useState<ArchiveItem | null>(null);
 
   const [openMenu, setOpenMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [gdriveBusyId, setGdriveBusyId] = useState<string | null>(null);
+  const [gdriveUnlinkBusyId, setGdriveUnlinkBusyId] = useState<string | null>(null);
+  const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
+  const [unlinkConfirmItem, setUnlinkConfirmItem] = useState<ArchiveItem | null>(null);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [trashLoading, setTrashLoading] = useState(false);
+  const [trashItems, setTrashItems] = useState<ArchiveItem[]>([]);
+  const [trashMeta, setTrashMeta] = useState<{ total: number; retentionDays: number } | null>(null);
+  const [restoreBusyId, setRestoreBusyId] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareSaving, setShareSaving] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareItem, setShareItem] = useState<ArchiveItem | null>(null);
+  const [shareVisibility, setShareVisibility] = useState<'public' | 'private' | 'shared'>('private');
+  const [shareSelected, setShareSelected] = useState<Array<{ userId: string; name: string; phone: string; role: 'viewer' | 'editor' }>>([]);
+  const [shareQuery, setShareQuery] = useState('');
+  const [shareUsersLoading, setShareUsersLoading] = useState(false);
+  const [shareUsers, setShareUsers] = useState<Array<{ userId: string; name: string; phone: string; nip?: string; role?: string }>>([]);
 
   const categoryMap = useMemo(() => {
     const m = new Map<string, CategoryItem>();
@@ -392,14 +482,102 @@ export default function FilesPage() {
     setUploadDocNumber('');
     setUploadDocDate('');
     setUploadDocKind('');
-    setUploadUnitSender('');
-    setUploadUnitRecipient('');
     setUploadCategory('');
     setUploadDesc('');
     setUploadTags('');
     setUploadPrivate(false);
+    setUploadHybridEnabled(false);
+    setUploadOverrides([]);
     setProgress(0);
     setUploadOpen(true);
+  }
+
+  function buildAutoOverride(file: File, idx: number, files: File[]): UploadFileOverride {
+    const baseDocNumber = uploadDocNumber.trim();
+    const autoDocNumber = baseDocNumber ? (files.length > 1 ? `${baseDocNumber}-${idx + 1}` : baseDocNumber) : '';
+    return {
+      title: uploadTitle.trim() || filenameWithoutExt(file.name),
+      docNumber: autoDocNumber,
+      docDate: uploadDocDate.trim(),
+      docKind: uploadDocKind.trim(),
+      category: uploadCategory.trim(),
+      description: uploadDesc.trim(),
+      tags: uploadTags.trim(),
+      visibility: 'inherit'
+    };
+  }
+
+  function onChooseUploadFiles(files: File[]) {
+    setUploadFiles(files);
+    setUploadOverrides(files.map((f, idx) => buildAutoOverride(f, idx, files)));
+    if (!files.length) setUploadHybridEnabled(false);
+  }
+
+  function updateUploadOverride(index: number, patch: Partial<UploadFileOverride>) {
+    setUploadOverrides((cur) => cur.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
+
+  useEffect(() => {
+    if (!uploadHybridEnabled || !uploadFiles.length) return;
+    setUploadOverrides((current) =>
+      uploadFiles.map((f, idx) => {
+        const auto = buildAutoOverride(f, idx, uploadFiles);
+        const existing = current[idx];
+        if (!existing) return auto;
+        return {
+          title: existing.title || auto.title,
+          docNumber: existing.docNumber || auto.docNumber,
+          docDate: existing.docDate || auto.docDate,
+          docKind: existing.docKind || auto.docKind,
+          category: existing.category || auto.category,
+          description: existing.description || auto.description,
+          tags: existing.tags || auto.tags,
+          visibility: existing.visibility
+        };
+      })
+    );
+  }, [uploadHybridEnabled, uploadFiles, uploadTitle, uploadDocNumber, uploadDocDate, uploadDocKind, uploadCategory, uploadDesc, uploadTags]);
+
+  function openTrash() {
+    setTrashOpen(true);
+    setTrashLoading(true);
+    fetch('/api/archive/trash?page=1&limit=100', { credentials: 'include' })
+      .then((r) => r.json() as Promise<TrashResp>)
+      .then((d) => {
+        if ('success' in d) {
+          setTrashItems(d.data);
+          setTrashMeta({ total: d.meta.total, retentionDays: d.meta.retentionDays });
+        } else {
+          setToast({ kind: 'error', title: 'Failed to load trash', text: d.error });
+        }
+      })
+      .catch(() => {
+        setToast({ kind: 'error', title: 'Failed to load trash', text: 'Network error' });
+      })
+      .finally(() => setTrashLoading(false));
+  }
+
+  async function restoreFromTrashById(id: string) {
+    setRestoreBusyId(id);
+    try {
+      const res = await fetch(`/api/archive/${id}/restore`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
+      if (!res.ok || !json.success) {
+        setToast({ kind: 'error', title: 'Restore failed', text: json.error || 'Failed to restore file' });
+        return;
+      }
+      setTrashItems((cur) => cur.filter((x) => x._id !== id));
+      setTrashMeta((cur) => (cur ? { ...cur, total: Math.max(0, cur.total - 1) } : cur));
+      setToast({ kind: 'success', title: 'Restored', text: 'File restored from trash.' });
+      refresh();
+    } catch {
+      setToast({ kind: 'error', title: 'Restore failed', text: 'Network error' });
+    } finally {
+      setRestoreBusyId(null);
+    }
   }
 
   async function doUpload() {
@@ -418,12 +596,38 @@ export default function FilesPage() {
     form.append('docDate', uploadDocDate.trim() ? uploadDocDate.trim() : nowLocalDateTimeValue());
     form.append('docDateSource', uploadDocDate.trim() ? 'user' : 'default');
     form.append('docKind', uploadDocKind);
-    form.append('unitSender', uploadUnitSender);
-    form.append('unitRecipient', uploadUnitRecipient);
     form.append('category', uploadCategory);
     form.append('description', uploadDesc);
     form.append('tags', uploadTags);
     if (uploadPrivate) form.append('private', '1');
+    if (uploadHybridEnabled && uploadOverrides.length === uploadFiles.length) {
+      const cleaned = uploadOverrides
+        .map((o, idx) => ({
+          index: idx,
+          title: o.title.trim(),
+          docNumber: o.docNumber.trim(),
+          docDate: o.docDate.trim(),
+          docKind: o.docKind.trim(),
+          category: o.category.trim(),
+          description: o.description.trim(),
+          tags: o.tags.trim(),
+          visibility: o.visibility
+        }))
+        .filter(
+          (o) =>
+            o.title ||
+            o.docNumber ||
+            o.docDate ||
+            o.docKind ||
+            o.category ||
+            o.description ||
+            o.tags ||
+            o.visibility !== 'inherit'
+        );
+      if (cleaned.length) {
+        form.append('perFileOverrides', JSON.stringify(cleaned));
+      }
+    }
 
     await new Promise<void>((resolve) => {
       const xhr = new XMLHttpRequest();
@@ -441,16 +645,29 @@ export default function FilesPage() {
           if (xhr.status >= 200 && xhr.status < 300) {
             setMessage('Upload successful');
             const count = json?.meta?.count;
+            const dupCount = Number(json?.meta?.duplicatesSkipped ?? 0);
             setToast({
               kind: 'success',
               title: 'Upload successful',
-              text: typeof count === 'number' ? `${count} files uploaded. OCR will process in background.` : 'OCR will process in background.'
+              text:
+                typeof count === 'number'
+                  ? `${count} files uploaded${dupCount > 0 ? `, ${dupCount} duplicate skipped` : ''}. OCR will process in background.`
+                  : 'OCR will process in background.'
             });
             setUploadOpen(false);
             refresh();
           } else {
-            setError(json?.error || 'Upload failed');
-            setToast({ kind: 'error', title: 'Upload failed', text: json?.error || 'Upload failed' });
+            const dupArr = Array.isArray(json?.duplicates) ? json.duplicates : [];
+            const dupHint =
+              dupArr.length > 0
+                ? ` Duplicate: ${dupArr
+                    .slice(0, 2)
+                    .map((d: { uploadedName?: string }) => d?.uploadedName || 'file')
+                    .join(', ')}${dupArr.length > 2 ? ' ...' : ''}`
+                : '';
+            const msg = (json?.error || 'Upload failed') + dupHint;
+            setError(msg);
+            setToast({ kind: 'error', title: 'Upload failed', text: msg });
           }
         } catch {
           setError('Upload failed');
@@ -477,12 +694,12 @@ export default function FilesPage() {
     setEditTitle(it.title || it.subject || '');
     setEditTags(it.tags?.join(', ') || '');
     setEditDesc((it as unknown as { description?: string }).description || '');
-    setEditIsPublic(it.isPublic !== false);
+    const v = itemVisibility(it);
+    setEditVisibilityAtOpen(v);
+    setEditIsPublic(v === 'public');
     setEditDocNumber(it.docNumber || '');
     setEditDocDate(it.docDate ? new Date(it.docDate).toISOString().slice(0, 16) : '');
     setEditDocKind(it.docKind || it.type || '');
-    setEditUnitSender(it.unitSender || '');
-    setEditUnitRecipient(it.unitRecipient || '');
     setEditCategory(it.category || '');
     setEditOpen(true);
   }
@@ -495,18 +712,18 @@ export default function FilesPage() {
       const body = {
         title: editTitle,
         description: editDesc,
-        isPublic: editIsPublic,
         docNumber: editDocNumber,
         docDate: editDocDate.trim() ? editDocDate.trim() : null,
         docKind: editDocKind,
-        unitSender: editUnitSender,
-        unitRecipient: editUnitRecipient,
         category: editCategory,
         tags: editTags
           .split(',')
           .map((t) => t.trim())
           .filter(Boolean)
       };
+      if (editVisibilityAtOpen !== 'shared') {
+        (body as { isPublic?: boolean }).isPublic = editIsPublic;
+      }
 
       const res = await fetch(`/api/archive/${editId}`, {
         method: 'PUT',
@@ -567,6 +784,270 @@ export default function FilesPage() {
     setDetailOpen(true);
   }
 
+  async function searchUsersForShare(qInput: string) {
+    setShareUsersLoading(true);
+    try {
+      const qp = new URLSearchParams();
+      qp.set('limit', '20');
+      if (qInput.trim()) qp.set('q', qInput.trim());
+      const r = await fetch(`/api/users/search?${qp.toString()}`, { credentials: 'include' });
+      const j = (await r.json().catch(() => ({}))) as UserSearchResp;
+      if (!r.ok || !('success' in j && j.success)) {
+        return;
+      }
+      const currentOwnerUserId = shareItem?.uploadedBy?.userId ? String(shareItem.uploadedBy.userId) : '';
+      setShareUsers(
+        j.data.filter((u) => {
+          if (!me?.userId) return true;
+          if (u.userId === me.userId) return false;
+          if (currentOwnerUserId && u.userId === currentOwnerUserId) return false;
+          return true;
+        })
+      );
+    } finally {
+      setShareUsersLoading(false);
+    }
+  }
+
+  async function openShare(it: ArchiveItem) {
+    setShareItem(it);
+    setShareOpen(true);
+    setShareLoading(true);
+    setShareSelected([]);
+    setShareQuery('');
+    setShareUsers([]);
+    try {
+      const res = await fetch(`/api/archive/${it._id}/share`, { credentials: 'include' });
+      const json = (await res.json().catch(() => ({}))) as ShareResp;
+      if (!res.ok || !('success' in json && json.success)) {
+        setToast({ kind: 'error', title: 'Share load failed', text: 'error' in json ? json.error : 'Failed to load share setting' });
+        setShareOpen(false);
+        return;
+      }
+      setShareVisibility(json.data.visibility);
+      setShareSelected(json.data.sharedWith || []);
+      await searchUsersForShare('');
+    } catch {
+      setToast({ kind: 'error', title: 'Share load failed', text: 'Network error' });
+      setShareOpen(false);
+    } finally {
+      setShareLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!shareOpen) return;
+    const t = setTimeout(() => {
+      void searchUsersForShare(shareQuery);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [shareOpen, shareQuery]);
+
+  function toggleShareUser(user: { userId: string; name: string; phone: string }) {
+    setShareSelected((cur) => {
+      const exists = cur.find((x) => x.userId === user.userId);
+      if (exists) return cur.filter((x) => x.userId !== user.userId);
+      return [...cur, { userId: user.userId, name: user.name, phone: user.phone, role: 'viewer' }];
+    });
+  }
+
+  function setShareRole(userId: string, role: 'viewer' | 'editor') {
+    setShareSelected((cur) => cur.map((x) => (x.userId === userId ? { ...x, role } : x)));
+  }
+
+  async function saveShare() {
+    if (!shareItem) return;
+    setShareSaving(true);
+    try {
+      const payload = {
+        visibility: shareVisibility,
+        sharedWith: shareSelected.map((x) => ({ userId: x.userId, role: x.role }))
+      };
+      const res = await fetch(`/api/archive/${shareItem._id}/share`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = (await res.json().catch(() => ({}))) as ShareResp;
+      if (!res.ok || !('success' in json && json.success)) {
+        setToast({ kind: 'error', title: 'Share save failed', text: 'error' in json ? json.error : 'Failed to save share setting' });
+        return;
+      }
+      setToast({ kind: 'success', title: 'Share saved', text: 'Permission updated.' });
+      setShareOpen(false);
+      refresh();
+    } catch {
+      setToast({ kind: 'error', title: 'Share save failed', text: 'Network error' });
+    } finally {
+      setShareSaving(false);
+    }
+  }
+
+  async function copyTextToClipboard(text: string) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {
+      // fallback below
+    }
+
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+
+  function renderSnippet(snippet: string, needle: string) {
+    const s = String(snippet ?? '');
+    const n = String(needle ?? '').trim();
+    if (!s) return null;
+    if (!n) return <>{s}</>;
+
+    const escaped = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (!escaped) return <>{s}</>;
+    const re = new RegExp(`(${escaped})`, 'ig');
+    const parts = s.split(re);
+    return (
+      <>
+        {parts.map((part, idx) =>
+          idx % 2 === 1 ? (
+            <mark key={idx} style={{ background: 'rgba(250, 204, 21, 0.35)', color: 'inherit', padding: '0 2px', borderRadius: 2 }}>
+              {part}
+            </mark>
+          ) : (
+            <span key={idx}>{part}</span>
+          )
+        )}
+      </>
+    );
+  }
+
+  async function syncGdriveLink(it: ArchiveItem) {
+    setError(null);
+    setGdriveBusyId(it._id);
+    try {
+      const res = await fetch(`/api/archive/${it._id}/gdrive-link`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force: false })
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+        data?: { url?: string; fileId?: string; syncedAt?: string | null; cached?: boolean };
+      };
+      if (!res.ok || !json.success || !json.data?.url) {
+        const msg = json?.error || 'Failed to sync Google Drive link';
+        setError(msg);
+        setToast({ kind: 'error', title: 'GDrive sync failed', text: msg });
+        return;
+      }
+
+      const nextLink = String(json.data.url);
+      const nextFileId = String(json.data.fileId ?? '');
+      const nextSyncedAt = json.data.syncedAt ?? new Date().toISOString();
+
+      setItems((cur) =>
+        cur.map((x) =>
+          x._id === it._id
+            ? {
+                ...x,
+                gdriveLink: nextLink,
+                gdriveFileId: nextFileId,
+                gdriveSyncedAt: nextSyncedAt,
+                gdriveSyncError: ''
+              }
+            : x
+        )
+      );
+      setDetailItem((cur) =>
+        cur && cur._id === it._id
+          ? {
+              ...cur,
+              gdriveLink: nextLink,
+              gdriveFileId: nextFileId,
+              gdriveSyncedAt: nextSyncedAt,
+              gdriveSyncError: ''
+            }
+          : cur
+      );
+
+      const copied = await copyTextToClipboard(nextLink);
+      setToast({
+        kind: 'success',
+        title: json.data.cached ? 'GDrive link ready' : 'Synced to Google Drive',
+        text: copied ? 'Link copied to clipboard.' : `Copy manual: ${nextLink}`
+      });
+    } catch {
+      setToast({ kind: 'error', title: 'GDrive sync failed', text: 'Network error' });
+    } finally {
+      setGdriveBusyId(null);
+    }
+  }
+
+  async function unlinkGdriveLink(it: ArchiveItem) {
+    const linked = String(it.gdriveLink ?? '').trim();
+    if (!linked) return;
+
+    setError(null);
+    setGdriveUnlinkBusyId(it._id);
+    try {
+      const res = await fetch(`/api/archive/${it._id}/gdrive-link`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      const json = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
+      if (!res.ok || !json.success) {
+        const msg = json?.error || 'Failed to unlink Google Drive file';
+        setError(msg);
+        setToast({ kind: 'error', title: 'GDrive unlink failed', text: msg });
+        return;
+      }
+
+      setItems((cur) =>
+        cur.map((x) =>
+          x._id === it._id
+            ? { ...x, gdriveLink: '', gdriveFileId: '', gdriveSyncedAt: null, gdriveSyncError: '' }
+            : x
+        )
+      );
+      setDetailItem((cur) =>
+        cur && cur._id === it._id ? { ...cur, gdriveLink: '', gdriveFileId: '', gdriveSyncedAt: null, gdriveSyncError: '' } : cur
+      );
+      setToast({ kind: 'success', title: 'Unlinked', text: 'Google Drive link removed.' });
+    } catch {
+      setToast({ kind: 'error', title: 'GDrive unlink failed', text: 'Network error' });
+    } finally {
+      setGdriveUnlinkBusyId(null);
+    }
+  }
+
+  function openUnlinkConfirm(it: ArchiveItem) {
+    setUnlinkConfirmItem(it);
+    setUnlinkConfirmOpen(true);
+  }
+
+  const gdriveWorkingId = gdriveBusyId || gdriveUnlinkBusyId;
+  const gdriveWorkingItem = gdriveWorkingId
+    ? items.find((x) => x._id === gdriveWorkingId) || (detailItem && detailItem._id === gdriveWorkingId ? detailItem : null)
+    : null;
+
   function ocrBadgeClass(st?: ArchiveItem['ocrStatus']) {
     if (st === 'done') return 'badge badgeSuccess';
     if (st === 'failed') return 'badge badgeDanger';
@@ -587,12 +1068,15 @@ export default function FilesPage() {
         </div>
       ) : null}
       <div className="container">
-        <div className="row" style={{ alignItems: 'end', justifyContent: 'space-between' }}>
+        <div className="filesHero">
           <div>
-            <h1 style={{ marginBottom: 6 }}>File</h1>
-            <div style={{ color: 'var(--muted)' }}>Public files and your private files</div>
+            <h1 className="filesHeroTitle">File Archive</h1>
+            <div className="filesHeroSub">Public files and your private files</div>
           </div>
-          <div className="row" style={{ alignItems: 'center' }}>
+          <div className="row" style={{ alignItems: 'center', gap: 10 }}>
+            <button className="btn btnSecondary" type="button" onClick={openTrash}>
+              Trash
+            </button>
             <button className="btn" type="button" onClick={openUpload}>
               Upload
             </button>
@@ -722,6 +1206,20 @@ export default function FilesPage() {
 
           <div style={{ height: 12 }} />
 
+          <div className="quickPills">
+            <span className="quickPill">
+              Total <strong>{meta?.total ?? 0}</strong>
+            </span>
+            <span className="quickPill">
+              Page <strong>{page}</strong> / <strong>{meta?.totalPages ?? 1}</strong>
+            </span>
+            <span className="quickPill">
+              Per Page <strong>{limit}</strong>
+            </span>
+          </div>
+
+          <div style={{ height: 12 }} />
+
           {loading ? <div style={{ color: 'var(--muted)' }}>Loading…</div> : null}
 
           <div className="tableWrap">
@@ -737,23 +1235,22 @@ export default function FilesPage() {
               </thead>
               <tbody>
               {items.map((it) => {
-                const isOwner =
-                  !!me?.userId &&
-                  (it.uploadedBy?.userId ? String(it.uploadedBy.userId) === me.userId : it.uploadedBy?.phone === me?.phone);
-                const canEdit = isOwner && me?.role !== 'viewer';
+                const canEdit = canManageItem(it, me);
 
                 return (
                   <tr key={it._id} onClick={() => openDetail(it)} style={{ cursor: 'pointer' }}>
                     <td>
-                      <div
-                        style={{ fontWeight: 800, fontSize: 15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                        title={it.title || '-'}
-                      >
+                      <div className="fileCellTitle" title={it.title || '-'}>
                         Judul: {it.title?.trim() ? it.title : '-'}
                       </div>
-                      <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={it.originalName}>
+                      <div className="fileCellMeta" title={it.originalName}>
                         File: {it.originalName}
                       </div>
+                      {q.trim() && it.searchSnippet ? (
+                        <div className="fileCellMeta" style={{ whiteSpace: 'normal', lineHeight: 1.35 }} title={it.searchSnippet}>
+                          OCR: {renderSnippet(it.searchSnippet, q)}
+                        </div>
+                      ) : null}
                     </td>
                     <td style={{ color: '#9ca3af', whiteSpace: 'nowrap' }} title={(it as unknown as { archiveNumber?: string }).archiveNumber || ''}>
                       {(it as unknown as { archiveNumber?: string }).archiveNumber || '-'}
@@ -841,7 +1338,7 @@ export default function FilesPage() {
                   type="file"
                   multiple
                   style={{ display: 'none' }}
-                  onChange={(e) => setUploadFiles(e.target.files ? Array.from(e.target.files) : [])}
+                  onChange={(e) => onChooseUploadFiles(e.target.files ? Array.from(e.target.files) : [])}
                 />
                 <div style={{ color: 'var(--muted)' }}>{uploadFiles.length ? `${uploadFiles.length} file(s) selected` : 'No file selected'}</div>
               </div>
@@ -988,19 +1485,6 @@ export default function FilesPage() {
 
               <div style={{ height: 12 }} />
 
-              <div className="row" style={{ alignItems: 'end' }}>
-                <label style={{ flex: 1, minWidth: 240 }}>
-                  Unit Pengirim
-                  <input className="input" value={uploadUnitSender} onChange={(e) => setUploadUnitSender(e.target.value)} placeholder="Bagian Keuangan…" />
-                </label>
-                <label style={{ flex: 1, minWidth: 240 }}>
-                  Unit Penerima
-                  <input className="input" value={uploadUnitRecipient} onChange={(e) => setUploadUnitRecipient(e.target.value)} placeholder="Sekretariat…" />
-                </label>
-              </div>
-
-              <div style={{ height: 12 }} />
-
               <label>
                 Description
                 <textarea className="input" rows={3} value={uploadDesc} onChange={(e) => setUploadDesc(e.target.value)} />
@@ -1012,6 +1496,90 @@ export default function FilesPage() {
                 <input type="checkbox" checked={uploadPrivate} onChange={(e) => setUploadPrivate(e.target.checked)} />
                 Private (hanya terlihat oleh kamu)
               </label>
+
+              <div style={{ height: 12 }} />
+
+              <label style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={uploadHybridEnabled}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setUploadHybridEnabled(checked);
+                    if (checked) {
+                      setUploadOverrides(uploadFiles.map((f, idx) => buildAutoOverride(f, idx, uploadFiles)));
+                    }
+                  }}
+                  disabled={!uploadFiles.length}
+                />
+                Override metadata per file (hybrid)
+              </label>
+
+              {uploadHybridEnabled && uploadFiles.length ? (
+                <div style={{ marginTop: 10, border: '1px solid var(--border)', borderRadius: 12, padding: 10, maxHeight: 300, overflow: 'auto' }}>
+                  <div style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 8 }}>
+                    Metadata sudah terisi otomatis. Tinggal sesuaikan yang perlu.
+                  </div>
+                  {uploadFiles.map((f, idx) => {
+                    const ov = uploadOverrides[idx];
+                    if (!ov) return null;
+                    return (
+                      <div key={`${f.name}-${f.size}-${f.lastModified}`} style={{ borderTop: idx ? '1px solid var(--border)' : 'none', paddingTop: idx ? 10 : 0, marginTop: idx ? 10 : 0 }}>
+                        <div style={{ fontWeight: 700, marginBottom: 8 }}>{f.name}</div>
+                        <div className="row" style={{ alignItems: 'end' }}>
+                          <label style={{ flex: 1, minWidth: 220 }}>
+                            Judul Override
+                            <input className="input" value={ov.title} onChange={(e) => updateUploadOverride(idx, { title: e.target.value })} />
+                          </label>
+                          <label style={{ flex: 1, minWidth: 220 }}>
+                            Doc Number Override
+                            <input className="input" value={ov.docNumber} onChange={(e) => updateUploadOverride(idx, { docNumber: e.target.value })} />
+                          </label>
+                        </div>
+                        <div style={{ height: 8 }} />
+                        <div className="row" style={{ alignItems: 'end' }}>
+                          <label style={{ flex: 1, minWidth: 220 }}>
+                            Tanggal Surat Override
+                            <input className="input" type="datetime-local" value={ov.docDate} onChange={(e) => updateUploadOverride(idx, { docDate: e.target.value })} />
+                          </label>
+                          <label style={{ flex: 1, minWidth: 220 }}>
+                            Jenis Override
+                            <input className="input" value={ov.docKind} onChange={(e) => updateUploadOverride(idx, { docKind: e.target.value })} />
+                          </label>
+                          <label style={{ flex: 1, minWidth: 220 }}>
+                            Visibility Override
+                            <select className="input" value={ov.visibility} onChange={(e) => updateUploadOverride(idx, { visibility: e.target.value as UploadFileOverride['visibility'] })}>
+                              <option value="inherit">Ikuti Global</option>
+                              <option value="public">Public</option>
+                              <option value="private">Private</option>
+                            </select>
+                          </label>
+                        </div>
+                        <div style={{ height: 8 }} />
+                        <label>
+                          Kategori Override (path)
+                          <input
+                            className="input"
+                            value={ov.category}
+                            onChange={(e) => updateUploadOverride(idx, { category: e.target.value })}
+                            placeholder="Contoh: Keuangan / SPJ"
+                          />
+                        </label>
+                        <div style={{ height: 8 }} />
+                        <label>
+                          Tags Override (comma separated)
+                          <input className="input" value={ov.tags} onChange={(e) => updateUploadOverride(idx, { tags: e.target.value })} />
+                        </label>
+                        <div style={{ height: 8 }} />
+                        <label>
+                          Description Override
+                          <textarea className="input" rows={2} value={ov.description} onChange={(e) => updateUploadOverride(idx, { description: e.target.value })} />
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
 
               <div style={{ height: 12 }} />
 
@@ -1154,19 +1722,6 @@ export default function FilesPage() {
 
               <div style={{ height: 12 }} />
 
-              <div className="row" style={{ alignItems: 'end' }}>
-                <label style={{ flex: 1, minWidth: 240 }}>
-                  Unit Pengirim
-                  <input className="input" value={editUnitSender} onChange={(e) => setEditUnitSender(e.target.value)} />
-                </label>
-                <label style={{ flex: 1, minWidth: 240 }}>
-                  Unit Penerima
-                  <input className="input" value={editUnitRecipient} onChange={(e) => setEditUnitRecipient(e.target.value)} />
-                </label>
-              </div>
-
-              <div style={{ height: 12 }} />
-
               <label>
                 Description
                 <textarea className="input" rows={3} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
@@ -1243,10 +1798,9 @@ export default function FilesPage() {
                 {(() => {
                   const it = items.find((x) => x._id === openMenu.id);
                   if (!it) return null;
-                  const isOwner =
-                    !!me?.userId &&
-                    (it.uploadedBy?.userId ? String(it.uploadedBy.userId) === me.userId : it.uploadedBy?.phone === me?.phone);
-                  const canEdit = isOwner && me?.role !== 'viewer';
+                  const canEdit = canManageItem(it, me);
+                  const canDelete = isOwnerItem(it, me) && me?.role !== 'viewer';
+                  const canShare = isOwnerItem(it, me) && me?.role !== 'viewer';
                   return (
                     <>
                       <button
@@ -1269,7 +1823,58 @@ export default function FilesPage() {
                         Download
                       </a>
                       {canEdit ? (
+                        <button
+                          className="menuItem"
+                          type="button"
+                          disabled={gdriveBusyId === it._id || gdriveUnlinkBusyId === it._id}
+                          onClick={() => {
+                            void syncGdriveLink(it);
+                            setOpenMenu(null);
+                          }}
+                        >
+                          {gdriveBusyId === it._id ? 'Syncing GDrive…' : 'Get Link GDrive'}
+                        </button>
+                      ) : null}
+                      {it.gdriveLink ? (
+                        <a
+                          className="menuItem"
+                          href={it.gdriveLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={() => {
+                            setOpenMenu(null);
+                          }}
+                        >
+                          Open Link GDrive
+                        </a>
+                      ) : null}
+                      {canEdit && it.gdriveLink ? (
+                        <button
+                          className="menuItem"
+                          type="button"
+                          disabled={gdriveUnlinkBusyId === it._id || gdriveBusyId === it._id}
+                          onClick={() => {
+                            openUnlinkConfirm(it);
+                            setOpenMenu(null);
+                          }}
+                        >
+                          {gdriveUnlinkBusyId === it._id ? 'Unlinking…' : 'Unlink GDrive'}
+                        </button>
+                      ) : null}
+                      {canEdit ? (
                         <>
+                          {canShare ? (
+                            <button
+                              className="menuItem"
+                              type="button"
+                              onClick={() => {
+                                void openShare(it);
+                                setOpenMenu(null);
+                              }}
+                            >
+                              Share
+                            </button>
+                          ) : null}
                           <button
                             className="menuItem"
                             type="button"
@@ -1280,16 +1885,18 @@ export default function FilesPage() {
                           >
                             Edit
                           </button>
-                          <button
-                            className="menuItem"
-                            type="button"
-                            onClick={() => {
-                              openDeleteConfirm(it);
-                              setOpenMenu(null);
-                            }}
-                          >
-                            Delete
-                          </button>
+                          {canDelete ? (
+                            <button
+                              className="menuItem"
+                              type="button"
+                              onClick={() => {
+                                openDeleteConfirm(it);
+                                setOpenMenu(null);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          ) : null}
                         </>
                       ) : null}
                     </>
@@ -1340,6 +1947,150 @@ export default function FilesPage() {
           </div>
         ) : null}
 
+        {unlinkConfirmOpen && unlinkConfirmItem ? (
+          <div className="modalOverlay" onClick={() => (gdriveUnlinkBusyId ? null : setUnlinkConfirmOpen(false))}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Unlink GDrive?</h3>
+                <button
+                  className="btn btnSecondary"
+                  type="button"
+                  onClick={() => setUnlinkConfirmOpen(false)}
+                  disabled={Boolean(gdriveUnlinkBusyId)}
+                >
+                  Close
+                </button>
+              </div>
+
+              <div style={{ height: 12 }} />
+
+              <div style={{ color: 'var(--muted)' }}>
+                File <span style={{ fontWeight: 800, color: 'var(--text)' }}>{unlinkConfirmItem.originalName}</span> akan dihapus dari Google Drive
+                dan link di sistem akan dikosongkan.
+              </div>
+
+              <div style={{ height: 14 }} />
+
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  className="btn btnSecondary"
+                  type="button"
+                  onClick={() => setUnlinkConfirmOpen(false)}
+                  disabled={Boolean(gdriveUnlinkBusyId)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn"
+                  type="button"
+                  disabled={Boolean(gdriveUnlinkBusyId)}
+                  onClick={async () => {
+                    const target = unlinkConfirmItem;
+                    if (!target) return;
+                    await unlinkGdriveLink(target);
+                    setUnlinkConfirmOpen(false);
+                    setUnlinkConfirmItem(null);
+                  }}
+                >
+                  {gdriveUnlinkBusyId ? 'Unlinking…' : 'Unlink'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {shareOpen && shareItem ? (
+          <div className="modalOverlay" onClick={() => (shareSaving ? null : setShareOpen(false))}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Share File</h3>
+                <button className="btn btnSecondary" type="button" onClick={() => setShareOpen(false)} disabled={shareSaving}>
+                  Close
+                </button>
+              </div>
+              <div style={{ height: 10 }} />
+              <div style={{ color: 'var(--muted)' }}>{shareItem.originalName}</div>
+              <div style={{ height: 12 }} />
+
+              {shareLoading ? (
+                <div style={{ color: 'var(--muted)' }}>Loading share settings…</div>
+              ) : (
+                <>
+                  <label>
+                    Visibility
+                    <select className="input" value={shareVisibility} onChange={(e) => setShareVisibility(e.target.value as 'public' | 'private' | 'shared')}>
+                      <option value="private">Private (owner only)</option>
+                      <option value="shared">Shared (selected users)</option>
+                      <option value="public">Public (all users)</option>
+                    </select>
+                  </label>
+
+                  {shareVisibility === 'shared' ? (
+                    <>
+                      <div style={{ height: 12 }} />
+                      <label>
+                        Cari User
+                        <input
+                          className="input"
+                          value={shareQuery}
+                          onChange={(e) => setShareQuery(e.target.value)}
+                          placeholder="Nama / NIP / Phone"
+                        />
+                      </label>
+                      <div style={{ height: 8 }} />
+                      <div style={{ color: 'var(--muted)', fontSize: 12 }}>{shareUsersLoading ? 'Searching users…' : `${shareUsers.length} user ditemukan`}</div>
+                      <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 8, maxHeight: 160, overflow: 'auto', marginTop: 8 }}>
+                        {shareUsers.map((u) => {
+                          const selected = shareSelected.some((x) => x.userId === u.userId);
+                          return (
+                            <label key={u.userId} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                              <input type="checkbox" checked={selected} onChange={() => toggleShareUser({ userId: u.userId, name: u.name, phone: u.phone })} />
+                              <span>
+                                {u.name} ({u.phone}) {u.nip ? `- ${u.nip}` : ''}
+                              </span>
+                            </label>
+                          );
+                        })}
+                        {!shareUsers.length ? <div style={{ color: 'var(--muted)' }}>Tidak ada user.</div> : null}
+                      </div>
+
+                      <div style={{ height: 10 }} />
+                      <div style={{ fontWeight: 700, marginBottom: 6 }}>User Terpilih</div>
+                      <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 8, maxHeight: 180, overflow: 'auto' }}>
+                        {shareSelected.map((m) => (
+                          <div key={m.userId} className="row" style={{ alignItems: 'center', marginBottom: 6 }}>
+                            <div style={{ flex: 1 }}>
+                              {m.name} ({m.phone})
+                            </div>
+                            <select className="input" style={{ width: 140 }} value={m.role} onChange={(e) => setShareRole(m.userId, e.target.value as 'viewer' | 'editor')}>
+                              <option value="viewer">Viewer</option>
+                              <option value="editor">Editor</option>
+                            </select>
+                            <button className="btn btnSecondary" type="button" onClick={() => toggleShareUser(m)}>
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                        {!shareSelected.length ? <div style={{ color: 'var(--muted)' }}>Belum ada user dipilih.</div> : null}
+                      </div>
+                    </>
+                  ) : null}
+                </>
+              )}
+
+              <div style={{ height: 14 }} />
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button className="btn btnSecondary" type="button" onClick={() => setShareOpen(false)} disabled={shareSaving}>
+                  Cancel
+                </button>
+                <button className="btn" type="button" onClick={saveShare} disabled={shareSaving || shareLoading}>
+                  {shareSaving ? 'Saving…' : 'Save Share'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {categoryModalOpen ? (
           <div className="modalOverlay" onClick={() => (creatingCategory ? null : setCategoryModalOpen(false))}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -1378,6 +2129,74 @@ export default function FilesPage() {
                 <button className="btn" type="button" onClick={submitCategoryModal} disabled={creatingCategory || !categoryModalName.trim()}>
                   {creatingCategory ? 'Creating…' : 'Create'}
                 </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {trashOpen ? (
+          <div className="modalOverlay" onClick={() => setTrashOpen(false)}>
+            <div className="modal" onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Trash</h3>
+                <button className="btn btnSecondary" type="button" onClick={() => setTrashOpen(false)}>
+                  Close
+                </button>
+              </div>
+              <div style={{ height: 10 }} />
+              <div style={{ color: 'var(--muted)' }}>
+                Items in trash are auto-deleted after {trashMeta?.retentionDays ?? 30} days.
+              </div>
+              <div style={{ marginTop: 6 }} className="quickPills">
+                <span className="quickPill">
+                  Total Trash <strong>{trashMeta?.total ?? 0}</strong>
+                </span>
+              </div>
+              <div style={{ height: 12 }} />
+              <div className="tableWrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>File</th>
+                      <th>Trashed At</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trashLoading ? (
+                      <tr>
+                        <td colSpan={3} style={{ color: '#9ca3af' }}>
+                          Loading...
+                        </td>
+                      </tr>
+                    ) : trashItems.length ? (
+                      trashItems.map((it) => (
+                        <tr key={it._id}>
+                          <td>{it.originalName}</td>
+                          <td>{it.trashedAt ? new Date(it.trashedAt).toLocaleString() : '-'}</td>
+                          <td>
+                            <button
+                              className="btn btnSecondary"
+                              type="button"
+                              disabled={restoreBusyId === it._id}
+                              onClick={() => {
+                                void restoreFromTrashById(it._id);
+                              }}
+                            >
+                              {restoreBusyId === it._id ? 'Restoring…' : 'Restore'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} style={{ color: '#9ca3af' }}>
+                          Trash is empty.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -1428,24 +2247,23 @@ export default function FilesPage() {
                 </div>
                 <div style={{ width: 220 }}>
                   <div style={{ color: 'var(--muted)', fontSize: 12 }}>Visibility</div>
-                  <div style={{ fontWeight: 700 }}>{detailItem.isPublic === false ? 'Private' : 'Public'}</div>
+                  <div style={{ fontWeight: 700 }}>{itemVisibility(detailItem).toUpperCase()}</div>
                 </div>
                 <div style={{ width: 220 }}>
                   <div style={{ color: 'var(--muted)', fontSize: 12 }}>OCR</div>
                   <div style={{ fontWeight: 700 }}>{detailItem.ocrStatus || '-'}</div>
                 </div>
-              </div>
-
-              <div style={{ height: 10 }} />
-
-              <div className="row">
-                <div style={{ flex: 1, minWidth: 260 }}>
-                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>Unit Pengirim</div>
-                  <div style={{ fontWeight: 700 }}>{detailItem.unitSender || '-'}</div>
-                </div>
-                <div style={{ flex: 1, minWidth: 260 }}>
-                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>Unit Penerima</div>
-                  <div style={{ fontWeight: 700 }}>{detailItem.unitRecipient || '-'}</div>
+                <div style={{ width: 320 }}>
+                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>Google Drive</div>
+                  <div style={{ fontWeight: 700 }}>
+                    {detailItem.gdriveLink ? (
+                      <a href={detailItem.gdriveLink} target="_blank" rel="noreferrer">
+                        Open Link
+                      </a>
+                    ) : (
+                      '-'
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1488,11 +2306,33 @@ export default function FilesPage() {
                 >
                   Download
                 </button>
+                <button
+                  className="btn btnSecondary"
+                  type="button"
+                  disabled={gdriveBusyId === detailItem._id || gdriveUnlinkBusyId === detailItem._id}
+                  onClick={() => {
+                    void syncGdriveLink(detailItem);
+                  }}
+                >
+                  {gdriveBusyId === detailItem._id ? 'Syncing GDrive…' : 'Get Link GDrive'}
+                </button>
+                {detailItem.gdriveLink ? (
+                  <button
+                    className="btn btnSecondary"
+                    type="button"
+                    disabled={gdriveUnlinkBusyId === detailItem._id || gdriveBusyId === detailItem._id}
+                    onClick={() => {
+                      openUnlinkConfirm(detailItem);
+                    }}
+                  >
+                    {gdriveUnlinkBusyId === detailItem._id ? 'Unlinking…' : 'Unlink GDrive'}
+                  </button>
+                ) : null}
                 {detailItem._id ? (
                   <button
                     className="btn btnSecondary"
                     type="button"
-                    disabled={!(detailItem.uploadedBy?.userId ? String(detailItem.uploadedBy.userId) === me?.userId : detailItem.uploadedBy?.phone === me?.phone) || me?.role === 'viewer'}
+                    disabled={!canManageItem(detailItem, me)}
                     onClick={() => {
                       setDetailOpen(false);
                       openEdit(detailItem);
@@ -1501,11 +2341,59 @@ export default function FilesPage() {
                     Edit
                   </button>
                 ) : null}
+                {detailItem._id && isOwnerItem(detailItem, me) && me?.role !== 'viewer' ? (
+                  <button
+                    className="btn btnSecondary"
+                    type="button"
+                    onClick={() => {
+                      setDetailOpen(false);
+                      void openShare(detailItem);
+                    }}
+                  >
+                    Share
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {gdriveWorkingId ? (
+          <div className="modalOverlay" onClick={() => {}}>
+            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+              <h3 style={{ marginTop: 0, marginBottom: 8 }}>
+                {gdriveBusyId ? 'Syncing to Google Drive…' : 'Unlinking from Google Drive…'}
+              </h3>
+              <div style={{ color: 'var(--muted)' }}>
+                {gdriveWorkingItem?.originalName ? (
+                  <>
+                    Sedang memproses file: <span style={{ color: 'var(--text)', fontWeight: 800 }}>{gdriveWorkingItem.originalName}</span>
+                  </>
+                ) : (
+                  'Sedang memproses file. Mohon tunggu sebentar.'
+                )}
+              </div>
+              <div style={{ height: 12 }} />
+              <div className="quickPills">
+                <span className="quickPill">
+                  Status <strong>{gdriveBusyId ? 'Syncing' : 'Unlinking'}</strong>
+                </span>
+                <span className="quickPill">
+                  Jangan tutup tab <strong>sebelum selesai</strong>
+                </span>
               </div>
             </div>
           </div>
         ) : null}
       </div>
     </AppShell>
+  );
+}
+
+export default function FilesPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
+      <FilesPageContent />
+    </Suspense>
   );
 }

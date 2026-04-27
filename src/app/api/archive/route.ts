@@ -4,8 +4,34 @@ import { requireAuth } from '@/lib/auth';
 import { dbConnect } from '@/lib/mongodb';
 import { Archive } from '@/models/Archive';
 import { triggerOcrInBackground } from '@/lib/ocr';
+import { buildReadAccessOrFilter } from '@/lib/archiveAccess';
 
 export const runtime = 'nodejs';
+
+function pickSnippetTerm(q: string) {
+  const tokens = String(q ?? '')
+    .trim()
+    .split(/\s+/)
+    .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '').trim())
+    .filter((t) => t.length >= 2);
+  return tokens[0] || '';
+}
+
+function buildSearchSnippet(text: string, term: string) {
+  const raw = String(text ?? '').replace(/\s+/g, ' ').trim();
+  if (!raw) return '';
+  if (!term) return raw.slice(0, 180);
+
+  const lower = raw.toLowerCase();
+  const idx = lower.indexOf(term.toLowerCase());
+  if (idx < 0) return raw.slice(0, 180);
+
+  const start = Math.max(0, idx - 70);
+  const end = Math.min(raw.length, idx + term.length + 110);
+  const prefix = start > 0 ? '... ' : '';
+  const suffix = end < raw.length ? ' ...' : '';
+  return `${prefix}${raw.slice(start, end)}${suffix}`;
+}
 
 export async function GET(req: Request) {
   try {
@@ -35,9 +61,7 @@ export async function GET(req: Request) {
     const category = (searchParams.get('category') ?? '').trim();
     const year = (searchParams.get('year') ?? '').trim();
 
-    const and: Record<string, unknown>[] = [
-      { $or: [{ isPublic: true }, { 'uploadedBy.userId': me.userId }] }
-    ];
+    const and: Record<string, unknown>[] = [{ $or: buildReadAccessOrFilter(me.userId) }];
 
     const filter: Record<string, unknown> = { status: 'active', $and: and };
 
@@ -156,9 +180,20 @@ export async function GET(req: Request) {
       ]);
     }
 
+    const snippetTerm = pickSnippetTerm(q);
+    const mappedItems = (items as Array<Record<string, unknown>>).map((it) => {
+      if (!q) return it;
+      const extractedText = String(it.extractedText ?? '');
+      if (!extractedText) return it;
+      return {
+        ...it,
+        searchSnippet: buildSearchSnippet(extractedText, snippetTerm)
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      data: items,
+      data: mappedItems,
       meta: {
         page,
         limit,

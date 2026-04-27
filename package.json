@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx scripts/seed.ts",
-    "seed:categories": "tsx scripts/seed-categories.ts"
+    "seed:categories": "tsx scripts/seed-categories.ts",
+    "ocr:worker": "tsx scripts/ocr-worker.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

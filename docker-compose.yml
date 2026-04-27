@@ -1,0 +1,76 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: arsipkpu-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-change_me_please}
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME:-kpuarchive}
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+    container_name: arsipkpu-app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-change_me_please}@mongo:27017/${MONGO_DB_NAME:-kpuarchive}?authSource=admin
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      ARCHIVE_BASE_PATH: /data/archive/raw
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-104857600}
+      MAX_FILES: ${MAX_FILES:-30}
+      OCR_EXECUTION_MODE: external
+      OCR_LANG: ${OCR_LANG:-eng+ind}
+      GDRIVE_OAUTH_CLIENT_ID: ${GDRIVE_OAUTH_CLIENT_ID:-}
+      GDRIVE_OAUTH_CLIENT_SECRET: ${GDRIVE_OAUTH_CLIENT_SECRET:-}
+      GDRIVE_OAUTH_REFRESH_TOKEN: ${GDRIVE_OAUTH_REFRESH_TOKEN:-}
+      GDRIVE_SERVICE_ACCOUNT_EMAIL: ${GDRIVE_SERVICE_ACCOUNT_EMAIL:-}
+      GDRIVE_PRIVATE_KEY: ${GDRIVE_PRIVATE_KEY:-}
+      GDRIVE_FOLDER_ID: ${GDRIVE_FOLDER_ID:-}
+      GDRIVE_SHARE_MODE: ${GDRIVE_SHARE_MODE:-anyone}
+      GDRIVE_SHARE_DOMAIN: ${GDRIVE_SHARE_DOMAIN:-}
+      PDF_WATERMARK_TEXT: ${PDF_WATERMARK_TEXT:-KOMISI PEMILIHAN UMUM}
+      PDF_WATERMARK_OPACITY: ${PDF_WATERMARK_OPACITY:-0.3}
+    volumes:
+      - ${ARCHIVE_HOST_PATH:-./storage}:/data/archive/raw
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  ocr-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ocr
+    container_name: arsipkpu-ocr-worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-change_me_please}@mongo:27017/${MONGO_DB_NAME:-kpuarchive}?authSource=admin
+      ARCHIVE_BASE_PATH: /data/archive/raw
+      OCR_EXECUTION_MODE: external
+      OCR_LANG: ${OCR_LANG:-eng+ind}
+      OCR_WORKER_BATCH_LIMIT: ${OCR_WORKER_BATCH_LIMIT:-10}
+      OCR_WORKER_POLL_MS: ${OCR_WORKER_POLL_MS:-3000}
+      OCR_WORKER_IDLE_BACKOFF_MS: ${OCR_WORKER_IDLE_BACKOFF_MS:-5000}
+      PDF_WATERMARK_TEXT: ${PDF_WATERMARK_TEXT:-KOMISI PEMILIHAN UMUM}
+      PDF_WATERMARK_OPACITY: ${PDF_WATERMARK_OPACITY:-0.3}
+    volumes:
+      - ${ARCHIVE_HOST_PATH:-./storage}:/data/archive/raw
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongo_data:

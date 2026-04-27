@@ -9,17 +9,17 @@ import { User } from '@/models/User';
 export const runtime = 'nodejs';
 
 const CreateUserSchema = z.object({
-  nama: z.string().min(1),
-  nip: z.string().min(3).max(40),
-  golongan: z.string().max(20).optional(),
-  jabatan: z.string().max(120).optional(),
-  phone: z.string().min(5),
-  password: z.string().min(6),
+  nama: z.string().trim().min(1),
+  nip: z.string().trim().min(3).max(40),
+  golongan: z.string().trim().max(20).optional(),
+  jabatan: z.string().trim().max(120).optional(),
+  phone: z.string().trim().min(5),
+  password: z.string().trim().min(6),
   role: z.enum(['admin', 'staff', 'viewer']),
-  unit: z.string().max(100).optional(),
+  unit: z.string().trim().max(100).optional(),
   email: z.union([z.string().email(), z.literal('')]).optional(),
   gender: z.enum(['male', 'female', 'other', '']).optional(),
-  address: z.string().max(500).optional()
+  address: z.string().trim().max(500).optional()
 });
 
 export async function GET() {

@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth';
 import { dbConnect } from '@/lib/mongodb';
 import { Archive } from '@/models/Archive';
 import { logAudit } from '@/lib/audit';
+import { buildReadAccessOrFilter, normalizeVisibility } from '@/lib/archiveAccess';
 
 export const runtime = 'nodejs';
 
@@ -53,7 +54,7 @@ function buildExcelHtml(rows: Record<string, unknown>[]) {
         esc(it.category),
         esc(it.unitSender),
         esc(it.unitRecipient),
-        esc((it as { isPublic?: boolean }).isPublic === false ? '0' : '1'),
+        esc(normalizeVisibility(it as { visibility?: string; isPublic?: boolean }) === 'public' ? '1' : '0'),
         esc((it as { uploadedBy?: { name?: string } }).uploadedBy?.name),
         esc((it as { uploadedBy?: { phone?: string } }).uploadedBy?.phone),
         esc(toDateString(it.createdAt)),
@@ -101,7 +102,7 @@ export async function GET(req: Request) {
     const category = (searchParams.get('category') ?? '').trim();
     const year = (searchParams.get('year') ?? '').trim();
 
-    const and: Record<string, unknown>[] = [{ $or: [{ isPublic: true }, { 'uploadedBy.userId': me.userId }] }];
+    const and: Record<string, unknown>[] = [{ $or: buildReadAccessOrFilter(me.userId) }];
     const filter: Record<string, unknown> = { status: 'active', $and: and };
 
     if (q) filter.$text = { $search: q };

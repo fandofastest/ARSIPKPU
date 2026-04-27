@@ -3,11 +3,19 @@ import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { dbConnect } from '@/lib/mongodb';
 import { processPendingOcrBatch } from '@/lib/ocr';
+import { getOcrExecutionMode } from '@/lib/ocrExecution';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
+    if (getOcrExecutionMode() === 'external') {
+      return NextResponse.json(
+        { error: 'OCR worker is running in external mode. Use the ocr-worker service.' },
+        { status: 409 }
+      );
+    }
+
     const user = await requireAuth();
     if (user.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

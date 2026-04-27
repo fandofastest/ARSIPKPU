@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { FeedbackWidget } from './FeedbackWidget';
 
 type MeResponse =
   | { success: true; data: { name: string; phone: string; role: string } }
@@ -210,6 +211,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="nav">
           <NavItem href="/dashboard" label="Beranda" active={pathname === '/dashboard'} icon={<IconDashboard />} />
+          <NavItem href="/monev" label="Monev" active={pathname === '/monev'} icon={<IconDashboard />} />
           <NavItem href="/files" label="Arsip" active={pathname === '/files'} icon={<IconArchive />} />
           <NavItem href="/settings" label="Pengaturan" active={pathname === '/settings'} icon={<IconSettings />} />
           {me?.role === 'admin' ? (
@@ -248,6 +250,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div style={{ padding: 16 }}>{children}</div>
       </div>
+      <FeedbackWidget />
     </div>
   );
 }

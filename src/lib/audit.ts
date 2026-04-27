@@ -1,5 +1,6 @@
 import { type JwtUser } from '@/lib/auth';
 import { AuditLog } from '@/models/AuditLog';
+import crypto from 'node:crypto';
 
 export type AuditAction =
   | 'upload'
@@ -29,6 +30,22 @@ export async function logAudit(
     const xfwd = opts.req?.headers.get('x-forwarded-for') ?? '';
     const ip = opts.ip ?? (xfwd ? String(xfwd).split(',')[0].trim() : '') ?? '';
 
+    const prev = await AuditLog.findOne({}).sort({ createdAt: -1, _id: -1 }).select({ immutableHash: 1 }).lean();
+    const prevHash = String((prev as { immutableHash?: string } | null)?.immutableHash || '');
+    const payload = {
+      action,
+      userId: opts.user.userId,
+      archiveId: opts.archive?.archiveId ?? '',
+      ip,
+      userAgent: ua,
+      meta: opts.meta ?? null,
+      ts: new Date().toISOString()
+    };
+    const immutableHash = crypto
+      .createHash('sha256')
+      .update(`${prevHash}|${JSON.stringify(payload)}`)
+      .digest('hex');
+
     await AuditLog.create({
       action,
       user: {
@@ -44,7 +61,9 @@ export async function logAudit(
       },
       ip,
       userAgent: ua,
-      meta: opts.meta ?? null
+      meta: opts.meta ?? null,
+      prevHash,
+      immutableHash
     });
   } catch {
     // ignore

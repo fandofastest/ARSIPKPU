@@ -5,6 +5,7 @@ import { requireAuth } from '@/lib/auth';
 import { dbConnect } from '@/lib/mongodb';
 import { Archive } from '@/models/Archive';
 import { triggerOcrInBackground } from '@/lib/ocr';
+import { shouldTriggerLocalOcr } from '@/lib/ocrExecution';
 
 export const runtime = 'nodejs';
 
@@ -33,7 +34,9 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     archive.ocrUpdatedAt = new Date();
     await archive.save();
 
-    triggerOcrInBackground(1);
+    if (shouldTriggerLocalOcr()) {
+      triggerOcrInBackground(1);
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

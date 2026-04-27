@@ -3,6 +3,9 @@ import { NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/auth';
 import { dbConnect } from '@/lib/mongodb';
 import { Archive } from '@/models/Archive';
+import { buildReadAccessOrFilter } from '@/lib/archiveAccess';
+import { DisposalRequest } from '@/models/DisposalRequest';
+import { LifecycleNotification } from '@/models/LifecycleNotification';
 
 export const runtime = 'nodejs';
 
@@ -15,10 +18,10 @@ export async function GET() {
 
     const accessFilter: Record<string, unknown> = {
       status: 'active',
-      $or: [{ isPublic: true }, { 'uploadedBy.userId': me.userId }]
+      $or: buildReadAccessOrFilter(me.userId)
     };
 
-    const [byCategoryRaw, byUploaderRaw] = await Promise.all([
+    const [byCategoryRaw, byUploaderRaw, lifecycleRaw, pendingDisposals, unreadNotifications] = await Promise.all([
       Archive.aggregate<{ _id?: string; total: number }>([
         { $match: accessFilter },
         {
@@ -62,7 +65,19 @@ export async function GET() {
         },
         { $sort: { total: -1, _id: 1 } },
         { $limit: 10 }
-      ])
+      ]),
+      Archive.aggregate<{ _id?: string; total: number }>([
+        { $match: accessFilter },
+        {
+          $group: {
+            _id: { $ifNull: ['$lifecycleState', 'ACTIVE'] },
+            total: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]),
+      DisposalRequest.countDocuments({ overallStatus: 'pending' }),
+      LifecycleNotification.countDocuments({ type: 'disposal_eligible' })
     ]);
 
     const byCategory: Bucket[] = byCategoryRaw.map((x) => ({
@@ -73,12 +88,21 @@ export async function GET() {
       label: String(x._id ?? 'Unknown'),
       value: Number(x.total ?? 0)
     }));
+    const lifecycle: Bucket[] = lifecycleRaw.map((x) => ({
+      label: String(x._id ?? 'ACTIVE'),
+      value: Number(x.total ?? 0)
+    }));
 
     return NextResponse.json({
       success: true,
       data: {
         byCategory,
-        byUploader
+        byUploader,
+        lifecycle,
+        retentionAlerts: {
+          pendingDisposals,
+          unreadNotifications
+        }
       }
     });
   } catch (err) {

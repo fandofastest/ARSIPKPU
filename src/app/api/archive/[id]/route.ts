@@ -9,6 +9,7 @@ import { getFileStream, moveToTrash } from '@/lib/storage';
 import { logAudit } from '@/lib/audit';
 import { resolveActiveCategoryPath } from '@/lib/category';
 import { buildStandardArchiveOriginalName } from '@/lib/archiveNaming';
+import { canEditArchive, canReadArchive } from '@/lib/archiveAccess';
 
 export const runtime = 'nodejs';
 
@@ -29,6 +30,7 @@ const UpdateBodySchema = z.object({
   description: z.string().max(2000).optional(),
   tags: z.array(z.string().min(1).max(50)).max(50).optional(),
   isPublic: z.boolean().optional(),
+  visibility: z.enum(['public', 'private', 'shared']).optional(),
   docNumber: z.string().max(200).optional(),
   unit: z.string().max(100).optional(),
   docDate: z.union([z.string(), z.null()]).optional(),
@@ -39,7 +41,8 @@ const UpdateBodySchema = z.object({
   title: z.string().max(300).optional(),
   subject: z.string().max(300).optional(),
   year: z.union([z.number().int(), z.null()]).optional(),
-  category: z.string().max(100).optional()
+  category: z.string().max(100).optional(),
+  classificationCode: z.string().max(50).optional()
 });
 
 export async function PUT(req: Request, ctx: { params: { id: string } }) {
@@ -63,14 +66,27 @@ export async function PUT(req: Request, ctx: { params: { id: string } }) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    if (String(archive.uploadedBy.userId) !== user.userId) {
+    const isOwner = String(archive.uploadedBy.userId) === user.userId;
+    if (!canEditArchive(archive, user.userId)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if ((body.isPublic !== undefined || body.visibility !== undefined) && !isOwner) {
+      return NextResponse.json({ error: 'Only owner can change visibility' }, { status: 403 });
     }
 
     if (body.type !== undefined) archive.type = body.type;
     if (body.description !== undefined) archive.description = body.description;
     if (body.tags !== undefined) archive.tags = body.tags;
-    if (body.isPublic !== undefined) archive.isPublic = body.isPublic;
+    if (body.isPublic !== undefined) {
+      archive.isPublic = body.isPublic;
+      (archive as unknown as { visibility?: string }).visibility = body.isPublic ? 'public' : 'private';
+    }
+    if (body.visibility !== undefined) {
+      (archive as unknown as { visibility?: string }).visibility = body.visibility;
+      if (body.visibility === 'public') archive.isPublic = true;
+      if (body.visibility === 'private') archive.isPublic = false;
+    }
     if (body.docNumber !== undefined) archive.docNumber = body.docNumber;
     if (body.unit !== undefined) archive.unit = body.unit;
     if (body.docKind !== undefined) archive.docKind = body.docKind;
@@ -90,6 +106,10 @@ export async function PUT(req: Request, ctx: { params: { id: string } }) {
         }
         archive.category = resolvedCategory;
       }
+    }
+    if (body.classificationCode !== undefined) {
+      (archive as unknown as { classificationCode?: string }).classificationCode =
+        String(body.classificationCode || '').trim().toUpperCase() || 'UNCLASSIFIED';
     }
     if (body.docDate !== undefined) {
       if (body.docDate === null || String(body.docDate).trim() === '') {
@@ -157,8 +177,7 @@ export async function GET(req: Request, ctx: { params: { id: string } }) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
-    const isOwner = String(archive.uploadedBy.userId) === me.userId;
-    if (!archive.isPublic && !isOwner) {
+    if (!canReadArchive(archive, me.userId)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -221,9 +240,12 @@ export async function DELETE(req: Request, ctx: { params: { id: string } }) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const newPath = await moveToTrash(archive.relativePath);
+    const fromPath = archive.relativePath;
+    const newPath = await moveToTrash(fromPath);
     archive.relativePath = newPath;
     archive.status = 'deleted';
+    (archive as unknown as { trashedAt?: Date | null }).trashedAt = new Date();
+    (archive as unknown as { trashedFromPath?: string }).trashedFromPath = fromPath;
     await archive.save();
 
     await logAudit('delete', {

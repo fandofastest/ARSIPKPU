@@ -41,13 +41,16 @@ const AuditLogSchema = new Schema(
     archive: { type: AuditArchiveSchema, required: true },
     ip: { type: String, required: false, default: '' },
     userAgent: { type: String, required: false, default: '' },
-    meta: { type: Schema.Types.Mixed, required: false, default: null }
+    meta: { type: Schema.Types.Mixed, required: false, default: null },
+    prevHash: { type: String, required: false, default: '' },
+    immutableHash: { type: String, required: false, default: '' }
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
 AuditLogSchema.index({ createdAt: -1 });
 AuditLogSchema.index({ action: 1, createdAt: -1 });
+AuditLogSchema.index({ immutableHash: 1 }, { unique: true, sparse: true });
 AuditLogSchema.index({ 'user.phone': 1, createdAt: -1 });
 AuditLogSchema.index({ 'archive.archiveNumber': 1, createdAt: -1 });
 AuditLogSchema.index({ 'archive.archiveId': 1, createdAt: -1 });

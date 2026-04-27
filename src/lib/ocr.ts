@@ -7,6 +7,7 @@ import { promises as fs } from 'node:fs';
 import { Archive } from '@/models/Archive';
 import { OcrLog } from '@/models/OcrLog';
 import { getAbsolutePath } from '@/lib/storage';
+import { getOcrExecutionMode } from '@/lib/ocrExecution';
 
 const execFileAsync = promisify(execFile);
 
@@ -172,6 +173,44 @@ function guessDocDateFromText(text: string) {
   return null;
 }
 
+function guessDocNumberFromText(text: string) {
+  const lines = String(text ?? '')
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(0, 100);
+
+  const labelledPatterns = [
+    /^(nomor|no\.?|nomor surat)\s*[:\-]\s*(.+)$/i,
+    /^(number|ref)\s*[:\-]\s*(.+)$/i
+  ];
+  for (const line of lines) {
+    for (const p of labelledPatterns) {
+      const m = line.match(p);
+      if (m?.[2]) {
+        const v = m[2].trim().replace(/\s+/g, ' ');
+        if (v) return v.slice(0, 200);
+      }
+    }
+  }
+
+  // Fallback for common Indonesian formal document numbers.
+  const regexes = [
+    /\b\d{1,4}\/[A-Z0-9.\-]+\/\d{4}\b/i,
+    /\b[A-Z0-9.\-]+\/\d{1,4}\/[A-Z0-9.\-]+\/\d{4}\b/i,
+    /\bNo\.?\s*[:\-]?\s*([A-Z0-9./\-]{5,})\b/i
+  ];
+  const t = String(text ?? '');
+  for (const r of regexes) {
+    const m = t.match(r);
+    if (m) {
+      const raw = (m[1] || m[0]).replace(/^No\.?\s*[:\-]?\s*/i, '').trim();
+      if (raw) return raw.slice(0, 200);
+    }
+  }
+  return '';
+}
+
 export async function processNextPendingOcr() {
   const doc = await Archive.findOneAndUpdate(
     { status: 'active', ocrStatus: 'pending' },
@@ -224,6 +263,13 @@ export async function processNextPendingOcr() {
 
     if (!String((doc as unknown as { title?: string }).title ?? '').trim()) {
       (doc as unknown as { title?: string }).title = guessTitleFromText(doc.extractedText);
+    }
+
+    if (!String((doc as unknown as { docNumber?: string }).docNumber ?? '').trim()) {
+      const guessedDocNumber = guessDocNumberFromText(doc.extractedText);
+      if (guessedDocNumber) {
+        (doc as unknown as { docNumber?: string }).docNumber = guessedDocNumber;
+      }
     }
 
     if (!doc.docDate) {
@@ -290,6 +336,9 @@ export async function processPendingOcrBatch(limit: number) {
 }
 
 export function triggerOcrInBackground(limit = 1) {
+  if (getOcrExecutionMode() === 'external') {
+    return;
+  }
   const lim = Math.max(1, Math.min(5, Math.floor(limit)));
   setTimeout(() => {
     processPendingOcrBatch(lim).catch(() => {

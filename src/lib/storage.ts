@@ -1,7 +1,7 @@
 import { createReadStream, promises as fs } from 'node:fs';
 import { createWriteStream } from 'node:fs';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import type { Readable } from 'node:stream';
 
@@ -116,4 +116,36 @@ export async function deleteFile(relativePath: string) {
   const normalized = ensureRelativePathSafe(relativePath);
   const absPath = path.join(ARCHIVE_BASE_PATH, normalized.slice(1));
   await fs.unlink(absPath);
+}
+
+export async function restoreFromTrash(trashRelativePath: string, originalName: string) {
+  const normalized = ensureRelativePathSafe(trashRelativePath);
+  if (!normalized.startsWith('/_trash/')) {
+    throw new Error('Invalid trash path');
+  }
+
+  const ext =
+    path.extname(path.basename(originalName || '')) ||
+    path.extname(path.basename(normalized)) ||
+    '';
+  const filename = `${randomUUID()}${ext}`;
+  const { yyyy, mm, dd } = getDateParts();
+  const restoredRelativePath = `/${yyyy}/${mm}/${dd}/${filename}`;
+
+  const sourceAbsPath = path.join(ARCHIVE_BASE_PATH, normalized.slice(1));
+  const destAbsDir = path.join(ARCHIVE_BASE_PATH, yyyy, mm, dd);
+  const destAbsPath = path.join(destAbsDir, filename);
+
+  await fs.mkdir(destAbsDir, { recursive: true });
+  await fs.rename(sourceAbsPath, destAbsPath);
+  return restoredRelativePath;
+}
+
+export async function sha256ByRelativePath(relativePath: string) {
+  const normalized = ensureRelativePathSafe(relativePath);
+  const absPath = path.join(ARCHIVE_BASE_PATH, normalized.slice(1));
+  const rs = createReadStream(absPath);
+  const hash = createHash('sha256');
+  await pipeline(rs, hash as never);
+  return hash.digest('hex');
 }

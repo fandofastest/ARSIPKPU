@@ -33,6 +33,11 @@ type StatsResp =
       data: {
         byCategory: Bucket[];
         byUploader: Bucket[];
+        lifecycle: Bucket[];
+        retentionAlerts: {
+          pendingDisposals: number;
+          unreadNotifications: number;
+        };
       };
     }
   | { error: string };
@@ -151,6 +156,8 @@ export default function DashboardPage() {
   const [recent, setRecent] = useState<ArchiveItem[]>([]);
   const [byCategory, setByCategory] = useState<Bucket[]>([]);
   const [byUploader, setByUploader] = useState<Bucket[]>([]);
+  const [lifecycle, setLifecycle] = useState<Bucket[]>([]);
+  const [retentionAlerts, setRetentionAlerts] = useState({ pendingDisposals: 0, unreadNotifications: 0 });
 
   const loading = useMemo(() => me === null && recent.length === 0 && total === 0, [me, recent.length, total]);
 
@@ -198,6 +205,8 @@ export default function DashboardPage() {
         if ('success' in d) {
           setByCategory(d.data.byCategory);
           setByUploader(d.data.byUploader);
+          setLifecycle(d.data.lifecycle || []);
+          setRetentionAlerts(d.data.retentionAlerts || { pendingDisposals: 0, unreadNotifications: 0 });
         }
       })
       .catch(() => {
@@ -223,7 +232,7 @@ export default function DashboardPage() {
         <div className="heroPanel">
           <div>
             <h1 style={{ margin: 0 }}>Pusat Kendali Arsip</h1>
-            <div style={{ color: 'var(--muted)', marginTop: 8 }}>
+            <div className="pageHeroText">
               Lihat ringkasan dokumen, jelajahi kategori, dan buka arsip dengan cepat.
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
@@ -260,6 +269,13 @@ export default function DashboardPage() {
             <div className="statValue">{mineTotal}</div>
             <div style={{ color: 'var(--muted)', fontSize: 13 }}>Dokumen yang diunggah oleh akun Anda</div>
           </div>
+          <div className="card statCard" style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ color: 'var(--muted)' }}>Retention Alerts</div>
+            <div className="statValue">{retentionAlerts.pendingDisposals}</div>
+            <div style={{ color: 'var(--muted)', fontSize: 13 }}>
+              Pending disposal approvals · notifications: {retentionAlerts.unreadNotifications}
+            </div>
+          </div>
         </div>
 
         <div style={{ height: 16 }} />
@@ -271,9 +287,15 @@ export default function DashboardPage() {
 
         <div style={{ height: 16 }} />
 
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ margin: 0 }}>Unggahan Terbaru</h2>
+        <div className="row">
+          <PieChartCard title="Lifecycle States" data={lifecycle} onSelect={() => undefined} />
+        </div>
+
+        <div style={{ height: 16 }} />
+
+        <div className="card cardGlass">
+          <div className="sectionHeader">
+            <h2 className="sectionTitle">Unggahan Terbaru</h2>
             {loading ? <span style={{ color: 'var(--muted)' }}>Memuat…</span> : null}
           </div>
           <table className="table">

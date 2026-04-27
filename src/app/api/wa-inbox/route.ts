@@ -11,6 +11,7 @@ import { User } from '@/models/User';
 import { WaInbox } from '@/models/WaInbox';
 import { saveFileStream } from '@/lib/storage';
 import { triggerOcrInBackground } from '@/lib/ocr';
+import { shouldTriggerLocalOcr } from '@/lib/ocrExecution';
 import { reserveArchiveNumbers } from '@/lib/archiveNumber';
 import { applyPdfWatermarkByRelativePath } from '@/lib/pdfWatermark';
 import { verifyAndTouchIntegrationToken } from '@/lib/integrationToken';
@@ -204,6 +205,7 @@ export async function POST(req: Request) {
     let subject = '';
     let year: number | null = null;
     let category = '';
+    let classificationCode = 'UNCLASSIFIED';
     let uploaderPhoneInput = '';
 
     let savedInfo:
@@ -234,6 +236,7 @@ export async function POST(req: Request) {
         if (name === 'title') title = String(value ?? '').slice(0, 300);
         if (name === 'subject') subject = String(value ?? '').slice(0, 300);
         if (name === 'category') category = String(value ?? '').slice(0, 100);
+        if (name === 'classificationCode') classificationCode = String(value ?? '').slice(0, 50);
         if (name === 'year') {
           const raw = String(value ?? '').trim();
           year = raw ? (Number.isFinite(Number(raw)) ? Math.trunc(Number(raw)) : null) : null;
@@ -377,6 +380,7 @@ export async function POST(req: Request) {
     }
 
     category = category.trim();
+    classificationCode = (classificationCode || '').trim().toUpperCase() || 'UNCLASSIFIED';
     if (category) {
       const resolvedCategory = await resolveActiveCategoryPath(category);
       if (!resolvedCategory) {
@@ -411,7 +415,20 @@ export async function POST(req: Request) {
         phone: uploader.phone
       },
       isPublic,
+      visibility: isPublic ? 'public' : 'private',
+      sharedWith: [],
       archiveNumber: archiveNumbers[0] || '',
+      classificationCode,
+      lifecycleState: 'ACTIVE',
+      storageTier: 'hot',
+      lifecycleStateChangedAt: new Date(),
+      retentionPolicyCode: '',
+      retentionActiveUntil: null,
+      retentionInactiveUntil: null,
+      retentionReviewedAt: null,
+      disposalEligibleAt: null,
+      disposalNotifiedAt: null,
+      dispositionAt: null,
       docNumber,
       docDate,
       docDateSource,
@@ -462,7 +479,7 @@ export async function POST(req: Request) {
       }
     });
 
-    if (!isAudioVideo) {
+    if (!isAudioVideo && shouldTriggerLocalOcr()) {
       triggerOcrInBackground(3);
     }
 
