@@ -6,18 +6,17 @@ import Link from 'next/link';
 
 type Bucket = { label: string; value: number };
 
+type MonevData = {
+  total: number;
+  avgRating: string;
+  totalNew: number;
+  totalReviewed: number;
+  totalResolved: number;
+  byCategory: Bucket[];
+};
+
 type StatsResp =
-  | {
-      success: true;
-      data: {
-        total: number;
-        avgRating: string;
-        totalNew: number;
-        totalReviewed: number;
-        totalResolved: number;
-        byCategory: Bucket[];
-      };
-    }
+  | { success: true; data: MonevData }
   | { error: string };
 
 const PIE_COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444'];
@@ -96,7 +95,7 @@ function PieChartCard({
 }
 
 export default function MonevPage() {
-  const [stats, setStats] = useState<StatsResp['data'] | null>(null);
+  const [stats, setStats] = useState<MonevData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

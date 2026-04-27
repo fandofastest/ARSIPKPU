@@ -69,6 +69,9 @@ const ArchiveSchema = new Schema(
     subject: { type: String, required: false, default: '' },
     year: { type: Number, required: false, default: null },
     category: { type: String, required: false, default: '' },
+    subcategory: { type: String, required: false, default: '' },
+    accessLevel: { type: String, required: true, enum: ['BIASA', 'TERBATAS', 'RAHASIA'], default: 'BIASA' },
+    archiveType: { type: String, required: true, enum: ['DINAMIS', 'STATIS'], default: 'DINAMIS' },
     extractedText: { type: String, required: false, default: '' },
     ocrStatus: {
       type: String,
@@ -111,6 +114,9 @@ ArchiveSchema.index({ unitRecipient: 1 });
 ArchiveSchema.index({ title: 1 });
 ArchiveSchema.index({ year: 1 });
 ArchiveSchema.index({ category: 1 });
+ArchiveSchema.index({ subcategory: 1 });
+ArchiveSchema.index({ accessLevel: 1 });
+ArchiveSchema.index({ archiveType: 1 });
 ArchiveSchema.index({ gdriveFileId: 1 });
 ArchiveSchema.index({ trashedAt: -1 });
 ArchiveSchema.index({ createdAt: -1 });

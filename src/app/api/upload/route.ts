@@ -11,8 +11,8 @@ import { shouldTriggerLocalOcr } from '@/lib/ocrExecution';
 import { reserveArchiveNumbers } from '@/lib/archiveNumber';
 import { logAudit } from '@/lib/audit';
 import { applyPdfWatermarkByRelativePath } from '@/lib/pdfWatermark';
-import { resolveActiveCategoryPath } from '@/lib/category';
 import { buildStandardArchiveOriginalName } from '@/lib/archiveNaming';
+import { CATEGORY_TREE, getMinRetentionYears } from '@/lib/archiveConstants';
 
 export const runtime = 'nodejs';
 
@@ -40,6 +40,7 @@ type PerFileOverride = {
   docDate?: string;
   docKind?: string;
   category?: string;
+  subcategory?: string;
   description?: string;
   tags?: string;
   visibility?: 'inherit' | 'public' | 'private';
@@ -81,9 +82,14 @@ export async function POST(req: Request) {
     let subject = '';
     let year: number | null = null;
     let category = '';
-    let classificationCode = 'UNCLASSIFIED';
+    let subcategory = '';
+    let accessLevel: 'BIASA' | 'TERBATAS' | 'RAHASIA' = 'BIASA';
+    let archiveType: 'DINAMIS' | 'STATIS' = 'DINAMIS';
+    let retention: number | null = null;
+    let classificationCode = 'BIASA';
     let perFileOverridesRaw = '';
     const perFileOverridesByIndex = new Map<number, PerFileOverride>();
+
     type SavedInfo = {
       relativePath: string;
       filename: string;
@@ -110,16 +116,25 @@ export async function POST(req: Request) {
         if (name === 'title') title = String(value ?? '').slice(0, 300);
         if (name === 'subject') subject = String(value ?? '').slice(0, 300);
         if (name === 'category') category = String(value ?? '').slice(0, 100);
+        if (name === 'subcategory') subcategory = String(value ?? '').slice(0, 100);
+        if (name === 'accessLevel') {
+          const v = String(value ?? '').trim().toUpperCase();
+          if (v === 'BIASA' || v === 'TERBATAS' || v === 'RAHASIA') accessLevel = v;
+        }
+        if (name === 'archiveType') {
+          const v = String(value ?? '').trim().toUpperCase();
+          if (v === 'DINAMIS' || v === 'STATIS') archiveType = v;
+        }
+        if (name === 'retention') {
+          const n = Number(String(value ?? '').trim());
+          retention = Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
+        }
         if (name === 'classificationCode') classificationCode = String(value ?? '').slice(0, 50);
         if (name === 'perFileOverrides') perFileOverridesRaw = String(value ?? '');
         if (name === 'year') {
           const raw = String(value ?? '').trim();
-          if (!raw) {
-            year = null;
-          } else {
-            const n = Number(raw);
-            year = Number.isFinite(n) ? Math.trunc(n) : null;
-          }
+          const n = Number(raw);
+          year = raw && Number.isFinite(n) ? Math.trunc(n) : null;
         }
         if (name === 'docDate') {
           const s = value.trim();
@@ -129,14 +144,12 @@ export async function POST(req: Request) {
             docDateSource = 'user';
           }
         }
-
         if (name === 'docDateSource') {
           const s = value.trim();
           if (s === 'default' || s === 'user' || s === 'ocr' || s === 'unknown') {
             docDateSource = s;
           }
         }
-
         if (name === 'private') {
           const v = String(value ?? '').toLowerCase();
           const priv = v === '1' || v === 'true' || v === 'on' || v === 'yes';
@@ -159,37 +172,37 @@ export async function POST(req: Request) {
           file: unknown,
           info: { filename: string; encoding: string; mimeType: string }
         ) => {
-        if (name !== 'file') {
-          (file as { resume?: () => void }).resume?.();
-          return;
-        }
+          if (name !== 'file') {
+            (file as { resume?: () => void }).resume?.();
+            return;
+          }
 
-        const mimeType = info.mimeType || 'application/octet-stream';
-        if (!isMimeAllowed(mimeType)) {
-          (file as { resume?: () => void }).resume?.();
-          reject(new Error('Invalid mime type'));
-          return;
-        }
+          const mimeType = info.mimeType || 'application/octet-stream';
+          if (!isMimeAllowed(mimeType)) {
+            (file as { resume?: () => void }).resume?.();
+            reject(new Error('Invalid mime type'));
+            return;
+          }
 
-        (file as Readable).on('limit', () => {
-          reject(new Error('File too large'));
-        });
-
-        const nodeReadable = file as Readable;
-        const uploadIndex = uploadIndexCounter;
-        uploadIndexCounter += 1;
-
-        const p = saveFileStream(nodeReadable, info.filename, mimeType)
-          .then(async (s) => {
-            const watermarkedSize =
-              mimeType === 'application/pdf' ? await applyPdfWatermarkByRelativePath(s.relativePath) : s.size;
-            files.push({ saved: { ...s, uploadIndex }, meta: { originalName: s.safeOriginal, mimeType, size: watermarkedSize } });
-          })
-          .catch((err: unknown) => {
-            reject(err instanceof Error ? err : new Error('Upload failed'));
+          (file as Readable).on('limit', () => {
+            reject(new Error('File too large'));
           });
 
-        savePromises.push(p);
+          const nodeReadable = file as Readable;
+          const uploadIndex = uploadIndexCounter;
+          uploadIndexCounter += 1;
+
+          const p = saveFileStream(nodeReadable, info.filename, mimeType)
+            .then(async (s) => {
+              const watermarkedSize =
+                mimeType === 'application/pdf' ? await applyPdfWatermarkByRelativePath(s.relativePath) : s.size;
+              files.push({ saved: { ...s, uploadIndex }, meta: { originalName: s.safeOriginal, mimeType, size: watermarkedSize } });
+            })
+            .catch((err: unknown) => {
+              reject(err instanceof Error ? err : new Error('Upload failed'));
+            });
+
+          savePromises.push(p);
         }
       );
 
@@ -229,6 +242,7 @@ export async function POST(req: Request) {
               docDate: typeof row.docDate === 'string' ? row.docDate : undefined,
               docKind: typeof row.docKind === 'string' ? row.docKind : undefined,
               category: typeof row.category === 'string' ? row.category : undefined,
+              subcategory: typeof row.subcategory === 'string' ? row.subcategory : undefined,
               description: typeof row.description === 'string' ? row.description : undefined,
               tags: typeof row.tags === 'string' ? row.tags : undefined,
               visibility:
@@ -304,17 +318,52 @@ export async function POST(req: Request) {
       );
     }
 
+    // === VALIDATION RULES ===
     category = category.trim();
-    classificationCode = (classificationCode || '').trim().toUpperCase() || 'UNCLASSIFIED';
-    const resolvedCategoryCache = new Map<string, string>();
-    if (category) {
-      const resolvedCategory = await resolveActiveCategoryPath(category);
-      if (!resolvedCategory) {
-        return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
-      }
-      category = resolvedCategory;
-      resolvedCategoryCache.set(category.toLowerCase(), category);
+    subcategory = subcategory.trim();
+
+    // RULE 1: category, subcategory, year wajib diisi
+    if (!category) {
+      return NextResponse.json({ error: 'Kategori wajib diisi' }, { status: 400 });
     }
+    if (!subcategory) {
+      return NextResponse.json({ error: 'Subkategori wajib diisi' }, { status: 400 });
+    }
+    if (!year) {
+      return NextResponse.json({ error: 'Tahun arsip wajib diisi' }, { status: 400 });
+    }
+
+    // RULE 2: subcategory harus berasal dari category yang dipilih
+    const matchedCat = CATEGORY_TREE.find(
+      (c) => c.name.toLowerCase() === category.toLowerCase() || c.code.toLowerCase() === category.toLowerCase()
+    );
+    if (!matchedCat) {
+      return NextResponse.json({ error: `Kategori tidak valid: ${category}` }, { status: 400 });
+    }
+    const matchedSub = matchedCat.subcategories.find(
+      (s) => s.name.toLowerCase() === subcategory.toLowerCase() || s.code.toLowerCase() === subcategory.toLowerCase()
+    );
+    if (!matchedSub) {
+      return NextResponse.json(
+        { error: `Subkategori '${subcategory}' tidak tersedia dalam kategori '${matchedCat.name}'` },
+        { status: 400 }
+      );
+    }
+
+    // Normalize to canonical names
+    category = matchedCat.name;
+    subcategory = matchedSub.name;
+
+    // RULE 4: Pemilu -> retensi minimal 10 tahun
+    const minRetention = getMinRetentionYears(matchedCat.code);
+    if (minRetention > 0 && (retention === null || retention < minRetention)) {
+      retention = minRetention;
+    }
+
+    // RULE 5: accessLevel RAHASIA -> classificationCode = RAHASIA
+    if (accessLevel === 'RAHASIA') classificationCode = 'RAHASIA';
+    else if (accessLevel === 'TERBATAS') classificationCode = 'TERBATAS';
+    else classificationCode = 'BIASA';
 
     const finalDocKind = (docKind || type).trim();
 
@@ -332,32 +381,16 @@ export async function POST(req: Request) {
         const overrideDocDate = overrideDocDateRaw ? new Date(overrideDocDateRaw) : null;
         const finalDocDate = overrideDocDate && !Number.isNaN(overrideDocDate.getTime()) ? overrideDocDate : docDate;
         const finalDocDateSource =
-          overrideDocDate && !Number.isNaN(overrideDocDate.getTime())
-            ? 'user'
-            : docDateSource;
+          overrideDocDate && !Number.isNaN(overrideDocDate.getTime()) ? 'user' : docDateSource;
         const overrideDocNumber = override?.docNumber?.trim() || '';
         const finalDocNumber = overrideDocNumber || docNumber;
-        const resolvedDocNumber = uniquePrepared.length > 1 && !overrideDocNumber && finalDocNumber.trim()
-          ? `${finalDocNumber.trim()}-${idx + 1}`
-          : finalDocNumber;
+        const resolvedDocNumber =
+          uniquePrepared.length > 1 && !overrideDocNumber && finalDocNumber.trim()
+            ? `${finalDocNumber.trim()}-${idx + 1}`
+            : finalDocNumber;
         const overrideDocKind = override?.docKind?.trim() || '';
         const finalDocKindPerFile = (overrideDocKind || finalDocKind).trim();
         const overrideTitle = override?.title?.trim() || '';
-        const overrideCategory = override?.category?.trim() || '';
-        let finalCategory = category;
-        if (overrideCategory) {
-          const key = overrideCategory.toLowerCase();
-          let resolved = resolvedCategoryCache.get(key);
-          if (!resolved) {
-            const resolvedPath = await resolveActiveCategoryPath(overrideCategory);
-            if (!resolvedPath) {
-              throw new Error(`Invalid category override for file: ${fm.originalName}`);
-            }
-            resolved = resolvedPath;
-            resolvedCategoryCache.set(key, resolved);
-          }
-          finalCategory = resolved;
-        }
         const overrideDescription = override?.description?.trim();
         const finalDescription = overrideDescription ? overrideDescription.slice(0, 2000) : description;
         const overrideTagsRaw = override?.tags?.trim() || '';
@@ -370,9 +403,11 @@ export async function POST(req: Request) {
           : tags;
         const finalIsPublic =
           override?.visibility === 'private' ? false : override?.visibility === 'public' ? true : isPublic;
+        // RULE 5: RAHASIA always private
+        const effectiveIsPublic = accessLevel === 'RAHASIA' ? false : finalIsPublic;
         const archiveNumber = archiveNumbers[idx] || '';
         const standardizedOriginalName = buildStandardArchiveOriginalName({
-          categoryPath: finalCategory,
+          categoryPath: category,
           docKind: finalDocKindPerFile,
           docDate: finalDocDate,
           docNumber: resolvedDocNumber,
@@ -392,15 +427,17 @@ export async function POST(req: Request) {
             name: user.name,
             phone: user.phone
           },
-          isPublic: finalIsPublic,
-          visibility: finalIsPublic ? 'public' : 'private',
+          isPublic: effectiveIsPublic,
+          visibility: effectiveIsPublic ? 'public' : 'private',
           sharedWith: [],
           archiveNumber,
           classificationCode,
+          accessLevel,
+          archiveType,
           lifecycleState: 'ACTIVE',
           storageTier: 'hot',
           lifecycleStateChangedAt: new Date(),
-          retentionPolicyCode: '',
+          retentionPolicyCode: retention ? String(retention) : '',
           retentionActiveUntil: null,
           retentionInactiveUntil: null,
           retentionReviewedAt: null,
@@ -418,7 +455,8 @@ export async function POST(req: Request) {
           title: overrideTitle || title.trim() || subject.trim(),
           subject,
           year,
-          category: finalCategory,
+          category,
+          subcategory,
           extractedText: '',
           ocrStatus: isAudioVideo ? 'done' : 'pending',
           ocrError: '',
@@ -460,7 +498,8 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Server error';
-    const status = msg === 'UNAUTHORIZED' ? 401 : msg === 'File too large' ? 413 : msg === 'Invalid mime type' ? 415 : 500;
+    const status =
+      msg === 'UNAUTHORIZED' ? 401 : msg === 'File too large' ? 413 : msg === 'Invalid mime type' ? 415 : 500;
     return NextResponse.json({ error: msg === 'UNAUTHORIZED' ? 'Unauthorized' : msg }, { status });
   }
 }

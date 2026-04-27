@@ -72,35 +72,72 @@ async function main() {
 
   const tree: CategoryNode[] = [
     {
-      name: 'Surat Masuk',
-      children: [{ name: 'Undangan' }, { name: 'Pemberitahuan' }, { name: 'Permohonan' }, { name: 'Edaran' }, { name: 'Lainnya' }]
-    },
-    {
-      name: 'Surat Keluar',
-      children: [{ name: 'Surat Resmi' }, { name: 'Surat Internal' }, { name: 'Undangan' }, { name: 'Pemberitahuan' }, { name: 'Lainnya' }]
+      name: 'Administrasi',
+      children: [
+        { name: 'Surat Masuk' },
+        { name: 'Surat Keluar' },
+        { name: 'Nota Dinas' },
+        { name: 'Disposisi' },
+        { name: 'Arsip Umum' }
+      ]
     },
     {
       name: 'Keuangan',
-      children: [{ name: 'SPPD' }, { name: 'SPJ' }, { name: 'Pembayaran' }, { name: 'Laporan Keuangan' }, { name: 'Bukti Transfer' }, { name: 'Kwitansi' }]
+      children: [
+        { name: 'Anggaran' },
+        { name: 'SPJ' },
+        { name: 'Laporan Keuangan' },
+        { name: 'Bukti Transaksi' }
+      ]
+    },
+    {
+      name: 'Kepegawaian',
+      children: [
+        { name: 'Data Pegawai' },
+        { name: 'SK' },
+        { name: 'Absensi' },
+        { name: 'Cuti' }
+      ]
     },
     {
       name: 'Kegiatan',
       children: [
-        { name: 'Penugasan', children: [{ name: 'SPT' }, { name: 'Surat Tugas Lain' }] },
-        { name: 'Laporan', children: [{ name: 'Laporan Kegiatan' }, { name: 'Laporan Kinerja Harian' }, { name: 'Laporan Lainnya' }] },
-        { name: 'Dokumentasi', children: [{ name: 'Foto' }, { name: 'Video' }] },
-        { name: 'Notulen' }
+        { name: 'Undangan' },
+        { name: 'Dokumentasi' },
+        { name: 'Laporan Kegiatan' }
       ]
     },
     {
-      name: 'Administrasi',
+      name: 'Pemilu',
       children: [
-        { name: 'Kepegawaian', children: [{ name: 'Data Pegawai' }, { name: 'Dokumen Pegawai' }, { name: 'SK' }, { name: 'Kontrak' }, { name: 'Absensi' }, { name: 'Cuti' }] },
-        { name: 'Umum', children: [{ name: 'Nota Dinas' }, { name: 'Memo' }, { name: 'Surat Internal' }, { name: 'Arsip Umum' }] },
-        { name: 'Inventaris', children: [{ name: 'Data Barang' }, { name: 'Pengadaan' }, { name: 'Pemeliharaan' }] }
+        { name: 'Data Pemilih' },
+        { name: 'Pencalonan' },
+        { name: 'Berita Acara' },
+        { name: 'Rekapitulasi Suara' },
+        { name: 'Sengketa' }
       ]
     },
-    { name: 'Lainnya', children: [{ name: 'Arsip Tidak Terkategori' }] }
+    {
+      name: 'Logistik',
+      children: [
+        { name: 'Distribusi' },
+        { name: 'Inventaris' }
+      ]
+    },
+    {
+      name: 'Hukum',
+      children: [
+        { name: 'Peraturan' },
+        { name: 'Kontrak' },
+        { name: 'Dokumen Hukum' }
+      ]
+    },
+    {
+      name: 'Lainnya',
+      children: [
+        { name: 'Tidak Terklasifikasi' }
+      ]
+    }
   ];
 
   const items = buildCategoryRows(tree);
