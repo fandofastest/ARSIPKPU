@@ -22,11 +22,11 @@ export default function GuidePage() {
           </button>
         </div>
 
-        <div className="card" id="printable-guide" style={{ padding: '40px', lineHeight: '1.6', backgroundColor: '#fff', color: '#333' }}>
-          <div style={{ textAlign: 'center', borderBottom: '2px solid #eee', paddingBottom: '20px', marginBottom: '30px' }}>
+        <div className="card" id="printable-guide" style={{ padding: '40px', lineHeight: '1.6' }}>
+          <div style={{ textAlign: 'center', borderBottom: '2px solid var(--border)', paddingBottom: '20px', marginBottom: '30px' }}>
             <img src="/logo.png" alt="Logo KPU" style={{ width: '80px', marginBottom: '16px' }} />
-            <h1 style={{ margin: 0, fontSize: '24px', color: '#000' }}>PANDUAN PENGGUNAAN SISTEM E-ARSIP</h1>
-            <h2 style={{ margin: 0, fontSize: '18px', color: '#666' }}>KPU KOTA DUMAI</h2>
+            <h1 style={{ margin: 0, fontSize: '24px' }}>PANDUAN PENGGUNAAN SISTEM E-ARSIP</h1>
+            <h2 style={{ margin: 0, fontSize: '18px' }}>KPU KOTA DUMAI</h2>
           </div>
 
           <section style={{ marginBottom: '30px' }}>
@@ -65,7 +65,16 @@ export default function GuidePage() {
             </ul>
           </section>
 
-          <div style={{ marginTop: '50px', paddingTop: '20px', borderTop: '1px solid #eee', fontSize: '12px', textAlign: 'center', color: '#999' }}>
+          <div
+            style={{
+              marginTop: '50px',
+              paddingTop: '20px',
+              borderTop: '1px solid var(--border)',
+              fontSize: '12px',
+              textAlign: 'center',
+              color: 'var(--muted)'
+            }}
+          >
             © 2026 KPU KOTA DUMAI - Dokumen ini dihasilkan secara otomatis oleh Sistem E-Arsip
           </div>
         </div>
@@ -95,6 +104,11 @@ export default function GuidePage() {
           }
           body {
             background: #fff !important;
+            color: #000 !important;
+          }
+          #printable-guide {
+            background: #fff !important;
+            color: #000 !important;
           }
         }
       `}</style>
