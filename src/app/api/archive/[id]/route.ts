@@ -242,6 +242,13 @@ export async function DELETE(req: Request, ctx: { params: { id: string } }) {
 
     const fromPath = archive.relativePath;
     const newPath = await moveToTrash(fromPath);
+    if (!newPath) {
+      archive.status = 'deleted';
+      (archive as unknown as { trashedAt?: Date | null }).trashedAt = new Date();
+      (archive as unknown as { trashedFromPath?: string }).trashedFromPath = fromPath;
+      await archive.save();
+      return NextResponse.json({ success: true, fileMissing: true });
+    }
     archive.relativePath = newPath;
     archive.status = 'deleted';
     (archive as unknown as { trashedAt?: Date | null }).trashedAt = new Date();

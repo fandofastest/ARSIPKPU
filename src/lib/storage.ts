@@ -108,7 +108,15 @@ export async function moveToTrash(relativePath: string) {
   const trashName = `${Date.now()}-${path.basename(normalized)}`;
   const absDest = path.join(trashDir, trashName);
 
-  await fs.rename(absSource, absDest);
+  try {
+    await fs.rename(absSource, absDest);
+  } catch (err) {
+    const code = (err as { code?: string } | null)?.code;
+    if (code === 'ENOENT') {
+      return '';
+    }
+    throw err;
+  }
   return `/_trash/${trashName}`;
 }
 
