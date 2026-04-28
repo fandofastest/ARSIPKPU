@@ -12,7 +12,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cd /home/fando/arsipkpu
+          cd /home/fando/ARSIPKPU
           git fetch origin
           git reset --hard origin/main
           docker compose up -d --build
