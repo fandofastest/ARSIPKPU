@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 type SaveResp = { success: true } | { error: string; details?: unknown };
 
@@ -10,23 +10,28 @@ export function FeedbackWidget() {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [rating, setRating] = useState<number>(5);
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   async function submitFeedback() {
     setSaving(true);
     setToast(null);
     try {
+      const formData = new FormData();
+      formData.append('category', category);
+      formData.append('subject', subject.trim());
+      formData.append('message', message.trim());
+      formData.append('rating', String(rating));
+      files.forEach((file) => {
+        formData.append('file', file);
+      });
+
       const r = await fetch('/api/feedback', {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          category,
-          subject: subject.trim(),
-          message: message.trim(),
-          rating
-        })
+        body: formData
       });
       const j = (await r.json().catch(() => ({}))) as SaveResp;
       if (!r.ok || !('success' in j && j.success)) {
@@ -37,6 +42,7 @@ export function FeedbackWidget() {
       setMessage('');
       setRating(5);
       setCategory('saran');
+      setFiles([]);
       setToast({ kind: 'success', text: 'Terima kasih atas masukannya!' });
       setTimeout(() => {
         setIsOpen(false);
@@ -44,6 +50,12 @@ export function FeedbackWidget() {
       }, 2000);
     } finally {
       setSaving(false);
+    }
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files) {
+      setFiles(Array.from(e.target.files));
     }
   }
 
@@ -82,6 +94,7 @@ export function FeedbackWidget() {
           bottom: '90px',
           right: '24px',
           width: '320px',
+          maxHeight: '80vh',
           backgroundColor: 'var(--surface)',
           border: '1px solid var(--border)',
           borderRadius: '12px',
@@ -106,7 +119,7 @@ export function FeedbackWidget() {
               </svg>
             </button>
           </div>
-          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '14px' }}>
               Kategori
               <select className="input" value={category} onChange={(e) => setCategory(e.target.value as typeof category)}>
@@ -128,7 +141,12 @@ export function FeedbackWidget() {
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '14px' }}>
               Deskripsi Detail
-              <textarea className="input" rows={4} value={message} onChange={(e) => setMessage(e.target.value)} placeholder={category === 'bug' ? "Jelaskan langkah terjadinya error..." : "Tuliskan saran Anda di sini..."} />
+              <textarea className="input" rows={3} value={message} onChange={(e) => setMessage(e.target.value)} placeholder={category === 'bug' ? "Jelaskan langkah terjadinya error..." : "Tuliskan saran Anda di sini..."} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '14px' }}>
+              Lampiran Foto (Opsional)
+              <input type="file" multiple accept="image/*" onChange={handleFileChange} ref={fileRef} style={{ fontSize: '12px' }} />
+              {files.length > 0 && <div style={{ fontSize: '11px', color: 'var(--success)' }}>{files.length} file dipilih</div>}
             </label>
             <button className="btn btnPrimary" type="button" onClick={submitFeedback} disabled={saving || subject.trim().length < 3 || message.trim().length < 5}>
               {saving ? 'Mengirim...' : 'Kirim Sekarang'}

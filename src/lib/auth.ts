@@ -9,13 +9,12 @@ export type JwtUser = {
   role: 'admin' | 'staff' | 'viewer';
 };
 
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  throw new Error('Missing JWT_SECRET env var');
+// Lazy validation — validate at runtime, not at module-load / build time
+function getSecretKey(): Uint8Array {
+  const secret = process.env.JWT_SECRET ?? '';
+  if (!secret) throw new Error('Missing JWT_SECRET env var');
+  return new TextEncoder().encode(secret);
 }
-
-const secretKey = new TextEncoder().encode(JWT_SECRET);
 
 export const AUTH_COOKIE_NAME = 'auth_token';
 
@@ -31,11 +30,11 @@ export async function signAuthToken(payload: JwtUser, expiresIn: string = '7d') 
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(expiresIn)
-    .sign(secretKey);
+    .sign(getSecretKey());
 }
 
 export async function verifyAuthToken(token: string): Promise<JwtUser> {
-  const { payload } = await jwtVerify(token, secretKey);
+  const { payload } = await jwtVerify(token, getSecretKey());
   return payload as unknown as JwtUser;
 }
 

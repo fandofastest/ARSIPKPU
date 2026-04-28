@@ -32,9 +32,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="container" style={{ maxWidth: 520 }}>
-      <h1>Login</h1>
-      <div className="card">
+    <div className="container" style={{ maxWidth: 440, marginTop: '8vh' }}>
+      <div style={{ textAlign: 'center', marginBottom: 32 }}>
+        <img src="/logo.png" alt="Logo KPU" style={{ width: 100, marginBottom: 16 }} />
+        <h1 style={{ margin: 0 }}>E-Arsip KPU</h1>
+        <p style={{ color: 'var(--muted)', marginTop: 8 }}>KOTA DUMAI</p>
+      </div>
+      <div className="card" style={{ padding: 32 }}>
+        <h2 style={{ marginBottom: 24, textAlign: 'center' }}>Silakan Masuk</h2>
         <form onSubmit={onSubmit} className="row" style={{ flexDirection: 'column' }}>
           <label>
             Phone

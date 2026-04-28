@@ -65,6 +65,7 @@ export async function POST(req: Request) {
       }
     });
   } catch (err) {
+    console.error('[LOGIN ERROR]', err);
     if (err instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid input', details: err.flatten() }, { status: 400 });
     }

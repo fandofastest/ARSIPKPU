@@ -83,10 +83,10 @@ export async function POST(req: Request) {
     let year: number | null = null;
     let category = '';
     let subcategory = '';
-    let accessLevel: 'BIASA' | 'TERBATAS' | 'RAHASIA' = 'BIASA';
-    let archiveType: 'DINAMIS' | 'STATIS' = 'DINAMIS';
+    let accessLevel = 'BIASA' as 'BIASA' | 'TERBATAS' | 'RAHASIA';
+    let archiveType = 'DINAMIS' as 'DINAMIS' | 'STATIS';
     let retention: number | null = null;
-    let classificationCode = 'BIASA';
+    let classificationCode: string = 'BIASA';
     let perFileOverridesRaw = '';
     const perFileOverridesByIndex = new Map<number, PerFileOverride>();
 

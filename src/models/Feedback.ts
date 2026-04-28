@@ -18,7 +18,8 @@ const FeedbackSchema = new Schema(
       name: { type: String, required: false, default: '' },
       phone: { type: String, required: false, default: '' }
     },
-    reviewedAt: { type: Date, required: false, default: null }
+    reviewedAt: { type: Date, required: false, default: null },
+    attachments: [{ type: String, required: false, default: [] }]
   },
   { timestamps: true }
 );

@@ -101,6 +101,14 @@ function IconArchive({ className }: IconProps) {
   );
 }
 
+function IconGuide({ className }: IconProps) {
+  return (
+    <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 function IconUsers({ className }: IconProps) {
   return (
     <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -147,6 +155,40 @@ function NavItem({
       {icon}
       <span>{label}</span>
     </Link>
+  );
+}
+
+function NavGroupSettings({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(pathname.startsWith('/settings'));
+  const isActive = pathname.startsWith('/settings');
+
+  return (
+    <div className="navGroup">
+      <div className={`navItem navItemSplit ${isActive ? 'navItemActive' : ''}`}>
+        <Link href="/settings" className="navItemLinkPart">
+          <IconSettings />
+          <span>Pengaturan</span>
+        </Link>
+        <button
+          className={`navItemToggle ${open ? 'navItemToggleOpen' : ''}`}
+          onClick={() => setOpen(!open)}
+          type="button"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+      </div>
+      {open && (
+        <div className="navSubmenu">
+          <Link href="/settings/profile" className={`navSubItem ${pathname === '/settings/profile' ? 'navSubItemActive' : ''}`}>Profil</Link>
+          <Link href="/settings/categories" className={`navSubItem ${pathname === '/settings/categories' ? 'navSubItemActive' : ''}`}>Kategori Arsip</Link>
+          <Link href="/settings/integrations" className={`navSubItem ${pathname === '/settings/integrations' ? 'navSubItemActive' : ''}`}>Integrasi Cloud</Link>
+          <Link href="/settings/ocr-logs" className={`navSubItem ${pathname === '/settings/ocr-logs' ? 'navSubItemActive' : ''}`}>Log OCR</Link>
+          <Link href="/settings/backup" className={`navSubItem ${pathname === '/settings/backup' ? 'navSubItemActive' : ''}`}>Backup & Restore</Link>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -205,15 +247,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="appShell">
       <aside className="sidebar">
         <div className="sidebarBrand">
-          <div className="sidebarBrandTitle">KPU Dumai</div>
-          <div className="sidebarBrandSub">Modern Admin Dashboard</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img src="/logo.png" alt="Logo KPU" style={{ width: '42px', height: 'auto' }} />
+            <div>
+              <div className="sidebarBrandTitle">E-Arsip KPU</div>
+              <div className="sidebarBrandSub">KOTA DUMAI</div>
+            </div>
+          </div>
         </div>
 
         <div className="nav">
           <NavItem href="/dashboard" label="Beranda" active={pathname === '/dashboard'} icon={<IconDashboard />} />
           <NavItem href="/monev" label="Monev" active={pathname === '/monev'} icon={<IconDashboard />} />
           <NavItem href="/files" label="Arsip" active={pathname === '/files'} icon={<IconArchive />} />
-          <NavItem href="/settings" label="Pengaturan" active={pathname === '/settings'} icon={<IconSettings />} />
+          <NavItem href="/guide" label="Panduan" active={pathname === '/guide'} icon={<IconGuide />} />
+          <NavGroupSettings pathname={pathname} />
           {me?.role === 'admin' ? (
             <>
               <NavItem href="/users" label="Pengguna" active={pathname === '/users'} icon={<IconUsers />} />

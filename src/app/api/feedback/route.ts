@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server';
 import { Types } from 'mongoose';
 import { z } from 'zod';
+import busboy from 'busboy';
+import { Readable } from 'node:stream';
 
 import { requireAuth } from '@/lib/auth';
 import { dbConnect } from '@/lib/mongodb';
 import { Feedback } from '@/models/Feedback';
 import { logAudit } from '@/lib/audit';
+import { saveFileStream } from '@/lib/storage';
 
 export const runtime = 'nodejs';
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILES = 5;
 
 const CreateSchema = z.object({
   category: z.enum(['kritik', 'saran', 'bug', 'fitur', 'lainnya']).default('saran'),
@@ -57,14 +63,63 @@ export async function POST(req: Request) {
   try {
     const me = await requireAuth();
     await dbConnect();
-    const body = CreateSchema.parse(await req.json());
+
+    const contentType = req.headers.get('content-type') || '';
+    if (!contentType.includes('multipart/form-data')) {
+      // Fallback to JSON if no files
+      const body = CreateSchema.parse(await req.json());
+      const saved = await Feedback.create({
+        ...body,
+        status: 'new',
+        submittedBy: { userId: me.userId, name: me.name, phone: me.phone, role: me.role }
+      });
+      return NextResponse.json({ success: true, data: saved });
+    }
+
+    // Handle Multipart
+    const bb = busboy({ headers: Object.fromEntries(req.headers.entries()), limits: { fileSize: MAX_FILE_SIZE, files: MAX_FILES } });
+
+    const fields: Record<string, string> = {};
+    const attachmentPaths: string[] = [];
+    const savePromises: Promise<void>[] = [];
+
+    const done = new Promise<void>((resolve, reject) => {
+      bb.on('field', (name, val) => {
+        fields[name] = val;
+      });
+      bb.on('file', (name, file, info) => {
+        const p = saveFileStream(file as Readable, info.filename, info.mimeType)
+          .then((s) => {
+            attachmentPaths.push(s.relativePath);
+          })
+          .catch(reject);
+        savePromises.push(p);
+      });
+      bb.on('error', reject);
+      bb.on('finish', resolve);
+    });
+
+    const bodyStream = req.body;
+    if (!bodyStream) return NextResponse.json({ error: 'Missing body' }, { status: 400 });
+    Readable.fromWeb(bodyStream as any).pipe(bb);
+
+    await done;
+    await Promise.all(savePromises);
+
+    const parsed = CreateSchema.parse({
+      category: fields.category,
+      subject: fields.subject,
+      message: fields.message,
+      rating: fields.rating ? Number(fields.rating) : undefined
+    });
 
     const saved = await Feedback.create({
-      category: body.category,
-      subject: body.subject.trim(),
-      message: body.message.trim(),
-      rating: body.rating ?? null,
+      category: parsed.category,
+      subject: parsed.subject.trim(),
+      message: parsed.message.trim(),
+      rating: parsed.rating ?? null,
       status: 'new',
+      attachments: attachmentPaths,
       submittedBy: {
         userId: me.userId,
         name: me.name,
@@ -76,7 +131,7 @@ export async function POST(req: Request) {
     await logAudit('update', {
       user: me,
       req,
-      meta: { event: 'feedback_submit', feedbackId: String(saved._id), category: saved.category }
+      meta: { event: 'feedback_submit', feedbackId: String(saved._id), category: saved.category, filesCount: attachmentPaths.length }
     });
 
     return NextResponse.json({ success: true, data: saved });
