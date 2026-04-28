@@ -16,24 +16,26 @@ async function main() {
 
   await dbConnect();
 
+  const nip = '000000000000000000';
   const phone = '081234567890';
-
-  const existing = await User.findOne({ phone });
-  if (existing) {
-    console.log('Admin user already exists:', phone);
-    process.exit(0);
-  }
 
   const passwordHash = await bcrypt.hash('admin123', 12);
 
-  await User.create({
-    name: 'Administrator',
-    phone,
-    password: passwordHash,
-    role: 'admin'
-  });
+  const existing = await User.findOne({ $or: [{ nip }, { phone }] });
+  if (existing) {
+    existing.name = 'Administrator';
+    (existing as { nama?: string }).nama = 'Administrator';
+    (existing as { nip?: string }).nip = nip;
+    existing.phone = phone;
+    existing.password = passwordHash;
+    existing.role = 'admin';
+    await existing.save();
+    console.log('Seed completed. Updated admin:', nip);
+    process.exit(0);
+  }
 
-  console.log('Seed completed. Created admin:', phone);
+  await User.create({ name: 'Administrator', nama: 'Administrator', nip, phone, password: passwordHash, role: 'admin' });
+  console.log('Seed completed. Created admin:', nip);
 }
 
 main().catch((err) => {

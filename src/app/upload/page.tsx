@@ -106,7 +106,9 @@ export default function UploadPage() {
     setError(null);
 
     const form = new FormData();
-    form.append('file', file);
+    // PENTING: semua field text harus di-append SEBELUM file,
+    // karena busboy memproses multipart secara urutan dan file stream
+    // yang besar bisa membuat field yang datang setelahnya tidak terbaca.
     form.append('category', category);
     form.append('subcategory', subcategory);
     form.append('title', title);
@@ -118,6 +120,8 @@ export default function UploadPage() {
     if (docNumber) form.append('docNumber', docNumber);
     if (docDate) form.append('docDate', docDate);
     if (tags) form.append('tags', tags);
+    // File di-append terakhir
+    form.append('file', file);
 
     await new Promise<void>((resolve) => {
       const xhr = new XMLHttpRequest();
@@ -145,8 +149,11 @@ export default function UploadPage() {
             setStep('form');
             setProgress(0);
           } else {
-            setError(json?.error || 'Upload gagal');
+            const errMsg = json?.error || 'Upload gagal';
+            setError(errMsg);
             setStep('form');
+            // Scroll ke atas agar error terlihat
+            setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
           }
         } catch {
           setError('Upload gagal');

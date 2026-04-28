@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import busboy from 'busboy';
 import { Readable, Transform } from 'node:stream';
+import path from 'node:path';
 import { z } from 'zod';
 import { Types } from 'mongoose';
 
@@ -9,6 +10,7 @@ import { dbConnect } from '@/lib/mongodb';
 import { Archive } from '@/models/Archive';
 import { User } from '@/models/User';
 import { WaInbox } from '@/models/WaInbox';
+import { UploadSetting } from '@/models/UploadSetting';
 import { saveFileStream } from '@/lib/storage';
 import { triggerOcrInBackground } from '@/lib/ocr';
 import { shouldTriggerLocalOcr } from '@/lib/ocrExecution';
@@ -23,7 +25,7 @@ import { buildStandardArchiveOriginalName } from '@/lib/archiveNaming';
 
 export const runtime = 'nodejs';
 
-const MAX_FILE_SIZE = Number(process.env.MAX_FILE_SIZE ?? '104857600');
+const DEFAULT_MAX_FILE_SIZE = Number(process.env.MAX_FILE_SIZE ?? '104857600');
 const ALLOWED_MIME_PREFIXES = ['image/'];
 const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
@@ -50,6 +52,21 @@ const QuerySchema = z.object({
 function isMimeAllowed(mime: string) {
   if (ALLOWED_MIME_TYPES.has(mime)) return true;
   return ALLOWED_MIME_PREFIXES.some((p) => mime.startsWith(p));
+}
+
+function normalizeAllowedExtensions(input?: string[]) {
+  const normalized = (input ?? [])
+    .map((s) => String(s ?? ''))
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+    .map((s) => (s.startsWith('.') ? s.slice(1) : s))
+    .filter((s) => /^[a-z0-9]+$/.test(s));
+  return Array.from(new Set(normalized));
+}
+
+function getFileExtension(filename: string) {
+  const ext = path.extname(String(filename ?? '')).toLowerCase();
+  return ext.startsWith('.') ? ext.slice(1) : ext;
 }
 
 function pickIntegrationToken(req: Request) {
@@ -180,9 +197,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Expected multipart/form-data' }, { status: 415 });
     }
 
+    const uploadSetting = (await UploadSetting.findOne({ singletonKey: 'default' })
+      .select({ maxFileSizeBytes: 1, allowedExtensions: 1 })
+      .lean()) as { maxFileSizeBytes?: number; allowedExtensions?: string[] } | null;
+    const maxFileSizeBytes = Math.max(1, Number(uploadSetting?.maxFileSizeBytes ?? DEFAULT_MAX_FILE_SIZE));
+    const allowedExtensions = normalizeAllowedExtensions(uploadSetting?.allowedExtensions);
+
     const bb = busboy({
       headers: Object.fromEntries(req.headers.entries()),
-      limits: { fileSize: MAX_FILE_SIZE, files: 1 }
+      limits: { fileSize: maxFileSizeBytes, files: 1 }
     });
 
     let messageId = '';
@@ -266,6 +289,13 @@ export async function POST(req: Request) {
       bb.on('file', (name: string, file: unknown, info: { filename: string; encoding: string; mimeType: string }) => {
         if (name !== 'file') {
           (file as { resume?: () => void }).resume?.();
+          return;
+        }
+
+        const ext = getFileExtension(info.filename);
+        if (allowedExtensions.length && (!ext || !allowedExtensions.includes(ext))) {
+          (file as { resume?: () => void }).resume?.();
+          reject(new Error('Invalid file extension'));
           return;
         }
 

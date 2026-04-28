@@ -3,12 +3,12 @@
 import { useMemo, useState } from 'react';
 
 export default function LoginPage() {
-  const [phone, setPhone] = useState('');
+  const [nip, setNip] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = useMemo(() => phone.trim().length > 0 && password.length > 0, [phone, password]);
+  const canSubmit = useMemo(() => nip.trim().length > 0 && password.length > 0, [nip, password]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -19,11 +19,12 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ phone, password })
+        body: JSON.stringify({ nip, password })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Login failed');
-      window.location.href = '/dashboard';
+      const profileComplete = Boolean(data?.data?.profileComplete);
+      window.location.href = profileComplete ? '/dashboard' : '/settings/profile?required=1';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -42,8 +43,8 @@ export default function LoginPage() {
         <h2 style={{ marginBottom: 24, textAlign: 'center' }}>Silakan Masuk</h2>
         <form onSubmit={onSubmit} className="row" style={{ flexDirection: 'column' }}>
           <label>
-            Phone
-            <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="08xxxxxxxxxx" />
+            NIP
+            <input className="input" value={nip} onChange={(e) => setNip(e.target.value)} placeholder="Masukkan NIP" />
           </label>
           <label>
             Password

@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import busboy from 'busboy';
 import { Readable } from 'node:stream';
+import path from 'node:path';
 
 import { requireAuth } from '@/lib/auth';
 import { dbConnect } from '@/lib/mongodb';
 import { Archive } from '@/models/Archive';
+import { UploadSetting } from '@/models/UploadSetting';
 import { deleteFile, saveFileStream, sha256ByRelativePath } from '@/lib/storage';
 import { triggerOcrInBackground } from '@/lib/ocr';
 import { shouldTriggerLocalOcr } from '@/lib/ocrExecution';
@@ -16,7 +18,7 @@ import { CATEGORY_TREE, getMinRetentionYears } from '@/lib/archiveConstants';
 
 export const runtime = 'nodejs';
 
-const MAX_FILE_SIZE = Number(process.env.MAX_FILE_SIZE ?? '104857600');
+const DEFAULT_MAX_FILE_SIZE = Number(process.env.MAX_FILE_SIZE ?? '104857600');
 const MAX_FILES = Math.min(50, Math.max(1, Number(process.env.MAX_FILES ?? '20')));
 
 const ALLOWED_MIME_PREFIXES = ['image/'];
@@ -51,6 +53,21 @@ function isMimeAllowed(mime: string) {
   return ALLOWED_MIME_PREFIXES.some((p) => mime.startsWith(p));
 }
 
+function normalizeAllowedExtensions(input?: string[]) {
+  const normalized = (input ?? [])
+    .map((s) => String(s ?? ''))
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+    .map((s) => (s.startsWith('.') ? s.slice(1) : s))
+    .filter((s) => /^[a-z0-9]+$/.test(s));
+  return Array.from(new Set(normalized));
+}
+
+function getFileExtension(filename: string) {
+  const ext = path.extname(String(filename ?? '')).toLowerCase();
+  return ext.startsWith('.') ? ext.slice(1) : ext;
+}
+
 export async function POST(req: Request) {
   try {
     const user = await requireAuth();
@@ -62,9 +79,15 @@ export async function POST(req: Request) {
 
     await dbConnect();
 
+    const uploadSetting = (await UploadSetting.findOne({ singletonKey: 'default' })
+      .select({ maxFileSizeBytes: 1, allowedExtensions: 1 })
+      .lean()) as { maxFileSizeBytes?: number; allowedExtensions?: string[] } | null;
+    const maxFileSizeBytes = Math.max(1, Number(uploadSetting?.maxFileSizeBytes ?? DEFAULT_MAX_FILE_SIZE));
+    const allowedExtensions = normalizeAllowedExtensions(uploadSetting?.allowedExtensions);
+
     const bb = busboy({
       headers: Object.fromEntries(req.headers.entries()),
-      limits: { fileSize: MAX_FILE_SIZE, files: MAX_FILES }
+      limits: { fileSize: maxFileSizeBytes, files: MAX_FILES }
     });
 
     let description = '';
@@ -174,6 +197,13 @@ export async function POST(req: Request) {
         ) => {
           if (name !== 'file') {
             (file as { resume?: () => void }).resume?.();
+            return;
+          }
+
+          const ext = getFileExtension(info.filename);
+          if (allowedExtensions.length && (!ext || !allowedExtensions.includes(ext))) {
+            (file as { resume?: () => void }).resume?.();
+            reject(new Error('Invalid file extension'));
             return;
           }
 
@@ -322,40 +352,44 @@ export async function POST(req: Request) {
     category = category.trim();
     subcategory = subcategory.trim();
 
-    // RULE 1: category, subcategory, year wajib diisi
+    // Support format path dari MongoDB Category: "Parent / Child / SubChild"
+    // Jika subcategory kosong tapi category mengandung " / ", parse otomatis
+    if (!subcategory && category.includes(' / ')) {
+      const parts = category.split(' / ').map((p: string) => p.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        subcategory = parts.slice(1).join(' / ');
+        category = parts[0];
+      }
+    }
+
+    // RULE 1: category wajib diisi
     if (!category) {
       return NextResponse.json({ error: 'Kategori wajib diisi' }, { status: 400 });
     }
     if (!subcategory) {
       return NextResponse.json({ error: 'Subkategori wajib diisi' }, { status: 400 });
     }
+    // Year: gunakan tahun berjalan jika tidak diisi
     if (!year) {
-      return NextResponse.json({ error: 'Tahun arsip wajib diisi' }, { status: 400 });
+      year = new Date().getFullYear();
     }
 
-    // RULE 2: subcategory harus berasal dari category yang dipilih
+    // RULE 2: coba cocokkan ke CATEGORY_TREE, jika tidak ketemu terima apa adanya (kategori dari DB)
     const matchedCat = CATEGORY_TREE.find(
-      (c) => c.name.toLowerCase() === category.toLowerCase() || c.code.toLowerCase() === category.toLowerCase()
+      (c) => c.name.trim().toLowerCase() === category.toLowerCase() || c.code.trim().toLowerCase() === category.toLowerCase()
     );
-    if (!matchedCat) {
-      return NextResponse.json({ error: `Kategori tidak valid: ${category}` }, { status: 400 });
-    }
-    const matchedSub = matchedCat.subcategories.find(
-      (s) => s.name.toLowerCase() === subcategory.toLowerCase() || s.code.toLowerCase() === subcategory.toLowerCase()
-    );
-    if (!matchedSub) {
-      return NextResponse.json(
-        { error: `Subkategori '${subcategory}' tidak tersedia dalam kategori '${matchedCat.name}'` },
-        { status: 400 }
+    if (matchedCat) {
+      const matchedSub = matchedCat.subcategories.find(
+        (s) => s.name.trim().toLowerCase() === subcategory.toLowerCase() || s.code.trim().toLowerCase() === subcategory.toLowerCase()
       );
+      category = matchedCat.name;
+      subcategory = matchedSub ? matchedSub.name : subcategory;
+    } else {
+      console.log(`[upload] category '${category}' not in CATEGORY_TREE, accepting from DB`);
     }
-
-    // Normalize to canonical names
-    category = matchedCat.name;
-    subcategory = matchedSub.name;
 
     // RULE 4: Pemilu -> retensi minimal 10 tahun
-    const minRetention = getMinRetentionYears(matchedCat.code);
+    const minRetention = getMinRetentionYears(matchedCat?.code ?? '');
     if (minRetention > 0 && (retention === null || retention < minRetention)) {
       retention = minRetention;
     }

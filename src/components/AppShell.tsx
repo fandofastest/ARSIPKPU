@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { FeedbackWidget } from './FeedbackWidget';
 
 type MeResponse =
-  | { success: true; data: { name: string; phone: string; role: string } }
+  | { success: true; data: { name: string; phone: string; role: string; profileComplete?: boolean } }
   | { error: string };
 
 type IconProps = { className?: string };
@@ -158,7 +158,8 @@ function NavItem({
   );
 }
 
-function NavGroupSettings({ pathname }: { pathname: string }) {
+function NavGroupSettings({ pathname, role }: { pathname: string; role?: string }) {
+  const isAdmin = role === 'admin';
   const [open, setOpen] = useState(pathname.startsWith('/settings'));
   const isActive = pathname.startsWith('/settings');
 
@@ -182,10 +183,15 @@ function NavGroupSettings({ pathname }: { pathname: string }) {
       {open && (
         <div className="navSubmenu">
           <Link href="/settings/profile" className={`navSubItem ${pathname === '/settings/profile' ? 'navSubItemActive' : ''}`}>Profil</Link>
-          <Link href="/settings/categories" className={`navSubItem ${pathname === '/settings/categories' ? 'navSubItemActive' : ''}`}>Kategori Arsip</Link>
-          <Link href="/settings/integrations" className={`navSubItem ${pathname === '/settings/integrations' ? 'navSubItemActive' : ''}`}>Integrasi Cloud</Link>
-          <Link href="/settings/ocr-logs" className={`navSubItem ${pathname === '/settings/ocr-logs' ? 'navSubItemActive' : ''}`}>Log OCR</Link>
-          <Link href="/settings/backup" className={`navSubItem ${pathname === '/settings/backup' ? 'navSubItemActive' : ''}`}>Backup & Restore</Link>
+          {isAdmin && (
+            <>
+              <Link href="/settings/categories" className={`navSubItem ${pathname === '/settings/categories' ? 'navSubItemActive' : ''}`}>Kategori Arsip</Link>
+              <Link href="/settings/upload" className={`navSubItem ${pathname === '/settings/upload' ? 'navSubItemActive' : ''}`}>Upload</Link>
+              <Link href="/settings/integrations" className={`navSubItem ${pathname === '/settings/integrations' ? 'navSubItemActive' : ''}`}>Integrasi Cloud</Link>
+              <Link href="/settings/ocr-logs" className={`navSubItem ${pathname === '/settings/ocr-logs' ? 'navSubItemActive' : ''}`}>Log OCR</Link>
+              <Link href="/settings/backup" className={`navSubItem ${pathname === '/settings/backup' ? 'navSubItemActive' : ''}`}>Backup & Restore</Link>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -214,12 +220,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     fetch('/api/auth/me', { credentials: 'include' })
       .then((r) => r.json() as Promise<MeResponse>)
       .then((d) => {
-        if ('success' in d) setMe(d.data);
+        if ('success' in d) {
+          setMe(d.data);
+          if (d.data.profileComplete === false && pathname !== '/settings/profile') {
+            router.replace('/settings/profile?required=1');
+          }
+        }
       })
       .catch(() => {
         // ignore
       });
-  }, []);
+  }, [pathname, router]);
 
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -258,16 +269,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="nav">
           <NavItem href="/dashboard" label="Beranda" active={pathname === '/dashboard'} icon={<IconDashboard />} />
-          <NavItem href="/monev" label="Monev" active={pathname === '/monev'} icon={<IconDashboard />} />
+          {me?.role === 'admin' && (
+            <NavItem href="/monev" label="Monev" active={pathname === '/monev'} icon={<IconDashboard />} />
+          )}
           <NavItem href="/files" label="Arsip" active={pathname === '/files'} icon={<IconArchive />} />
           <NavItem href="/guide" label="Panduan" active={pathname === '/guide'} icon={<IconGuide />} />
-          <NavGroupSettings pathname={pathname} />
-          {me?.role === 'admin' ? (
+          <NavGroupSettings pathname={pathname} role={me?.role} />
+          {me?.role === 'admin' && (
             <>
               <NavItem href="/users" label="Pengguna" active={pathname === '/users'} icon={<IconUsers />} />
               <NavItem href="/audit" label="Aktivitas" active={pathname === '/audit'} icon={<IconAudit />} />
             </>
-          ) : null}
+          )}
         </div>
       </aside>
 

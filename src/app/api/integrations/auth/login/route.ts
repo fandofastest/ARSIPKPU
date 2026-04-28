@@ -11,7 +11,7 @@ import { checkIntegrationRateLimit, RATE_RULES } from '@/lib/integrationRateLimi
 export const runtime = 'nodejs';
 
 const BodySchema = z.object({
-  phone: z.string().min(5),
+  nip: z.string().min(3).max(40),
   password: z.string().min(1)
 });
 
@@ -40,14 +40,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Login is only allowed for app type' }, { status: 403 });
     }
 
-    const user = await User.findOne({ phone: body.phone });
+    const nip = body.nip.trim();
+    const user = await User.findOne({ nip });
     if (!user) {
-      return NextResponse.json({ error: 'Invalid phone or password' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid NIP or password' }, { status: 401 });
     }
 
     const ok = await bcrypt.compare(body.password, user.password);
     if (!ok) {
-      return NextResponse.json({ error: 'Invalid phone or password' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid NIP or password' }, { status: 401 });
     }
 
     const token = await signAuthToken({

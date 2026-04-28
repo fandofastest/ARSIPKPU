@@ -19,6 +19,8 @@ type MeResp =
         email?: string | null;
         gender?: 'male' | 'female' | 'other' | null;
         address?: string | null;
+        profileComplete?: boolean;
+        missingProfileFields?: string[];
       };
     }
   | { error: string };
@@ -58,6 +60,10 @@ export default function SettingsProfilePage() {
     address?: string | null;
   } | null>(null);
   const [profileName, setProfileName] = useState('');
+  const [profileNip, setProfileNip] = useState('');
+  const [profileGolongan, setProfileGolongan] = useState('');
+  const [profileJabatan, setProfileJabatan] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
   const [profileUnit, setProfileUnit] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
   const [profileGender, setProfileGender] = useState<'' | 'male' | 'female' | 'other'>('');
@@ -96,6 +102,10 @@ export default function SettingsProfilePage() {
       const json = (await res.json().catch(() => ({}))) as ProfileResp;
       if (!res.ok || !('success' in json)) return;
       setProfileName(json.data.nama || '');
+      setProfileNip(String(json.data.nip ?? ''));
+      setProfileGolongan(String(json.data.golongan ?? ''));
+      setProfileJabatan(String(json.data.jabatan ?? ''));
+      setProfilePhone(String(json.data.phone ?? ''));
       setProfileUnit(json.data.unit || '');
       setProfileEmail(json.data.email || '');
       setProfileGender((json.data.gender as '' | 'male' | 'female' | 'other' | null) || '');
@@ -128,9 +138,48 @@ export default function SettingsProfilePage() {
 
   async function saveProfile() {
     const trimmedName = profileName.trim();
+    const trimmedNip = profileNip.trim();
+    const trimmedGolongan = profileGolongan.trim();
+    const trimmedJabatan = profileJabatan.trim();
+    const trimmedPhone = profilePhone.trim();
     const trimmedEmail = profileEmail.trim().toLowerCase();
+    const trimmedUnit = profileUnit.trim();
+    const trimmedAddress = profileAddress.trim();
+    const requiredMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('required') === '1';
     if (!trimmedName) {
       setToast({ kind: 'error', title: 'Nama wajib diisi' });
+      return;
+    }
+    if (!trimmedNip) {
+      setToast({ kind: 'error', title: 'NIP wajib diisi' });
+      return;
+    }
+    if (!trimmedGolongan) {
+      setToast({ kind: 'error', title: 'Golongan wajib diisi' });
+      return;
+    }
+    if (!trimmedJabatan) {
+      setToast({ kind: 'error', title: 'Jabatan wajib diisi' });
+      return;
+    }
+    if (!trimmedPhone) {
+      setToast({ kind: 'error', title: 'Nomor HP wajib diisi' });
+      return;
+    }
+    if (!trimmedUnit) {
+      setToast({ kind: 'error', title: 'Unit kerja wajib diisi' });
+      return;
+    }
+    if (!trimmedEmail) {
+      setToast({ kind: 'error', title: 'Email wajib diisi' });
+      return;
+    }
+    if (!profileGender) {
+      setToast({ kind: 'error', title: 'Jenis kelamin wajib diisi' });
+      return;
+    }
+    if (!trimmedAddress) {
+      setToast({ kind: 'error', title: 'Alamat wajib diisi' });
       return;
     }
     if (trimmedEmail) {
@@ -157,10 +206,14 @@ export default function SettingsProfilePage() {
     try {
       const payload: Record<string, unknown> = {
         nama: trimmedName,
-        unit: profileUnit.trim(),
+        nip: trimmedNip,
+        golongan: trimmedGolongan,
+        jabatan: trimmedJabatan,
+        phone: trimmedPhone,
+        unit: trimmedUnit,
         email: trimmedEmail,
         gender: profileGender,
-        address: profileAddress.trim()
+        address: trimmedAddress
       };
       if (newPassword) {
         payload.currentPassword = currentPassword;
@@ -234,8 +287,12 @@ export default function SettingsProfilePage() {
               <input className="input" value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="Nama pegawai" />
             </label>
             <label style={{ width: 220 }}>
-              Nomor HP (Login)
-              <input className="input" value={meUser?.phone || ''} disabled />
+              NIP (Login)
+              <input className="input" value={profileNip} onChange={(e) => setProfileNip(e.target.value)} placeholder="Masukkan NIP" />
+            </label>
+            <label style={{ width: 220 }}>
+              Nomor HP
+              <input className="input" value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="08xxxxxxxxxx" />
             </label>
             <label style={{ width: 240 }}>
               Unit Kerja
@@ -250,6 +307,14 @@ export default function SettingsProfilePage() {
           <div style={{ height: 10 }} />
 
           <div className="row" style={{ alignItems: 'end' }}>
+            <label style={{ width: 220 }}>
+              Golongan
+              <input className="input" value={profileGolongan} onChange={(e) => setProfileGolongan(e.target.value)} placeholder="Contoh: III/a" />
+            </label>
+            <label style={{ width: 320 }}>
+              Jabatan
+              <input className="input" value={profileJabatan} onChange={(e) => setProfileJabatan(e.target.value)} placeholder="Jabatan" />
+            </label>
             <label style={{ width: 220 }}>
               Jenis Kelamin
               <select className="input" value={profileGender} onChange={(e) => setProfileGender(e.target.value as '' | 'male' | 'female' | 'other')}>

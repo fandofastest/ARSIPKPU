@@ -33,9 +33,9 @@ const spec = {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['phone', 'password'],
+                required: ['nip', 'password'],
                 properties: {
-                  phone: { type: 'string' },
+                  nip: { type: 'string' },
                   password: { type: 'string' }
                 }
               }

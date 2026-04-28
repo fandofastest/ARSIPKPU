@@ -15,6 +15,7 @@ const UpdateSchema = z
     golongan: z.string().max(20).optional().nullable(),
     jabatan: z.string().max(120).optional().nullable(),
     unit: z.string().max(100).optional().nullable(),
+    phone: z.string().min(5).optional(),
     email: z.union([z.string().email(), z.literal('')]).optional(),
     gender: z.enum(['male', 'female', 'other', '']).optional(),
     address: z.string().max(500).optional().nullable(),
@@ -66,6 +67,17 @@ export async function PUT(req: Request) {
 
     const user = await User.findById(me.userId);
     if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    if (body.phone !== undefined) {
+      const phoneNormalized = body.phone.trim();
+      if (phoneNormalized !== user.phone) {
+        const exists = await User.findOne({ phone: phoneNormalized, _id: { $ne: user._id } }).lean();
+        if (exists) {
+          return NextResponse.json({ error: 'Phone already registered' }, { status: 409 });
+        }
+      }
+      user.phone = phoneNormalized;
+    }
 
     const emailNormalized = body.email === undefined ? undefined : body.email.trim().toLowerCase();
     if (emailNormalized !== undefined && emailNormalized !== (user.email ?? '')) {
