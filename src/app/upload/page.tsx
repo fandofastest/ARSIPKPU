@@ -358,29 +358,31 @@ export default function UploadPage() {
             <div className="card" style={{ borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 5%, var(--surface))' }}>
               <h2 style={{ margin: '0 0 16px 0' }}>📋 Pratinjau Arsip</h2>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                <tbody>
-                  {[
-                    ['File', preview.file.name],
-                    ['Kategori', `${preview.category}`],
-                    ['Subkategori', `${preview.subcategory}`],
-                    ['Judul', preview.title],
-                    ['Tahun', preview.year],
-                    ['Retensi', `${preview.retention} tahun`],
-                    ['Tipe Arsip', preview.archiveType],
-                    ['Level Akses', preview.accessLevel],
-                    ['Nomor Dokumen', preview.docNumber || '-'],
-                    ['Tanggal Dokumen', preview.docDate || '-'],
-                    ['Tags', preview.tags || '-'],
-                    ['Deskripsi', preview.description || '-'],
-                  ].map(([label, value]) => (
-                    <tr key={label} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '8px 12px 8px 0', color: 'var(--muted)', whiteSpace: 'nowrap', width: 160 }}>{label}</td>
-                      <td style={{ padding: '8px 0', fontWeight: label === 'Level Akses' ? 700 : 400, color: label === 'Level Akses' ? accessLevelColor[value] : 'inherit' }}>{value}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="tableWrap">
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                  <tbody>
+                    {[
+                      ['File', preview.file.name],
+                      ['Kategori', `${preview.category}`],
+                      ['Subkategori', `${preview.subcategory}`],
+                      ['Judul', preview.title],
+                      ['Tahun', preview.year],
+                      ['Retensi', `${preview.retention} tahun`],
+                      ['Tipe Arsip', preview.archiveType],
+                      ['Level Akses', preview.accessLevel],
+                      ['Nomor Dokumen', preview.docNumber || '-'],
+                      ['Tanggal Dokumen', preview.docDate || '-'],
+                      ['Tags', preview.tags || '-'],
+                      ['Deskripsi', preview.description || '-'],
+                    ].map(([label, value]) => (
+                      <tr key={label} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '8px 12px 8px 0', color: 'var(--muted)', whiteSpace: 'nowrap', width: 160 }}>{label}</td>
+                        <td style={{ padding: '8px 0', fontWeight: label === 'Level Akses' ? 700 : 400, color: label === 'Level Akses' ? accessLevelColor[value] : 'inherit' }}>{value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {error && (

@@ -298,31 +298,33 @@ export default function DashboardPage() {
             <h2 className="sectionTitle">Unggahan Terbaru</h2>
             {loading ? <span style={{ color: 'var(--muted)' }}>Memuat…</span> : null}
           </div>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Nama File</th>
-                <th>Pengunggah</th>
-                <th>Waktu</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recent.map((it) => (
-                <tr key={it._id}>
-                  <td>{it.originalName}</td>
-                  <td>{it.uploadedBy?.name}</td>
-                  <td>{new Date(it.createdAt).toLocaleString()}</td>
-                </tr>
-              ))}
-              {recent.length === 0 ? (
+          <div className="tableWrap">
+            <table className="table">
+              <thead>
                 <tr>
-                  <td colSpan={3} style={{ color: 'var(--muted)' }}>
-                    Belum ada unggahan
-                  </td>
+                  <th>Nama File</th>
+                  <th>Pengunggah</th>
+                  <th>Waktu</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recent.map((it) => (
+                  <tr key={it._id}>
+                    <td>{it.originalName}</td>
+                    <td>{it.uploadedBy?.name}</td>
+                    <td>{new Date(it.createdAt).toLocaleString()}</td>
+                  </tr>
+                ))}
+                {recent.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} style={{ color: 'var(--muted)' }}>
+                      Belum ada unggahan
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </AppShell>
