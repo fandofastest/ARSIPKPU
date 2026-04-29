@@ -940,3 +940,19 @@ h2 {
   font-weight: 800;
   text-transform: uppercase;
 }
+
+.hide-desktop {
+  display: block;
+}
+.hide-mobile {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .hide-desktop {
+    display: none !important;
+  }
+  .hide-mobile {
+    display: block !important;
+  }
+}
