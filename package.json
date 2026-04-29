@@ -9,6 +9,7 @@
     "lint": "next lint",
     "seed": "tsx scripts/seed.ts",
     "seed:categories": "tsx scripts/seed-categories.ts",
+    "seed:users": "tsx scripts/seed-users.ts",
     "ocr:worker": "tsx scripts/ocr-worker.ts"
   },
   "dependencies": {
