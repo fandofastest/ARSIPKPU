@@ -218,19 +218,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
-      .then((r) => r.json() as Promise<MeResponse>)
+      .then(async (r) => {
+        if (r.status === 401) {
+          window.location.href = '/login';
+          return null;
+        }
+        return r.json() as Promise<MeResponse>;
+      })
       .then((d) => {
+        if (!d) return;
         if ('success' in d) {
           setMe(d.data);
           if (d.data.profileComplete === false && pathname !== '/settings/profile') {
             router.replace('/settings/profile?required=1');
           }
+        } else if ('error' in d && (d.error === 'Unauthorized' || d.error === 'UNAUTHORIZED')) {
+          window.location.href = '/login';
         }
       })
       .catch(() => {
         // ignore
       });
   }, [pathname, router]);
+
 
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark';
