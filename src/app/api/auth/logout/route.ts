@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import { AUTH_COOKIE_NAME, clearAuthCookie } from '@/lib/auth';
 
+// Use a local copy of isSecureAuthCookie since it's not exported from auth.ts
+function getIsSecure() {
+  const raw = String(process.env.AUTH_COOKIE_SECURE ?? '').trim().toLowerCase();
+  if (raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on') return true;
+  if (raw === '0' || raw === 'false' || raw === 'no' || raw === 'off') return false;
+  return process.env.NODE_ENV === 'production';
+}
+
 export async function POST() {
   const response = NextResponse.json({ success: true });
   
@@ -12,7 +20,7 @@ export async function POST() {
     name: AUTH_COOKIE_NAME,
     value: '',
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // The clearAuthCookie function handles the env var
+    secure: getIsSecure(),
     sameSite: 'lax',
     path: '/',
     maxAge: 0,
@@ -21,6 +29,7 @@ export async function POST() {
   
   return response;
 }
+
 
 
 
