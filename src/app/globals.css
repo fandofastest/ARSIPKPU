@@ -671,6 +671,7 @@ textarea {
   justify-content: center;
   padding: 24px;
   z-index: 50;
+  overflow-y: auto;
 }
 
 .modal {

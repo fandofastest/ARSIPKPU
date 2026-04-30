@@ -1609,7 +1609,7 @@ function FilesPageContent() {
               </label>
 
               {uploadHybridEnabled && uploadFiles.length ? (
-                <div style={{ marginTop: 10, border: '1px solid var(--border)', borderRadius: 12, padding: 10, maxHeight: 300, overflow: 'auto' }}>
+                <div style={{ marginTop: 10, border: '1px solid var(--border)', borderRadius: 12, padding: 10, maxHeight: 400, overflow: 'auto' }}>
                   <div style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 8 }}>
                     Metadata sudah terisi otomatis. Tinggal sesuaikan yang perlu.
                   </div>
@@ -1680,9 +1680,9 @@ function FilesPageContent() {
 
               <div style={{ height: 12 }} />
 
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn" type="button" onClick={doUpload} disabled={!uploadFiles.length || uploading}>
-                  {uploading ? 'Uploading…' : 'Upload'}
+              <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
+                <button className="btn btnPrimary" type="button" onClick={doUpload} disabled={!uploadFiles.length || uploading} style={{ width: '100%', padding: '12px', fontSize: '16px' }}>
+                  {uploading ? 'Uploading…' : '🚀 Mulai Unggah'}
                 </button>
               </div>
             </div>
