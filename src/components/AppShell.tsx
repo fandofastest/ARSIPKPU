@@ -240,9 +240,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    router.push('/login');
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      
+      // Aggressively clear client-side state
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+      localStorage.removeItem('theme'); // keep theme if we want, but let's be safe. Actually, better to just clear auth specific stuff if any, but let's clear all.
+      sessionStorage.clear();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      window.location.href = '/login';
+    }
   }
+
+
+
 
   function submitTopSearch() {
     const q = topQuery.trim();
