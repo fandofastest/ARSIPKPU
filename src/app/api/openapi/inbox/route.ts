@@ -70,6 +70,23 @@ const spec = {
         }
       }
     },
+    '/api/integrations/files/{id}': {
+      get: {
+        tags: ['integration-files'],
+        summary: 'Download atau view konten file arsip menggunakan integration token',
+        security: [{ integrationToken: [] }],
+        parameters: [
+          { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'ID dokumen arsip' },
+          { name: 'inline', in: 'query', schema: { type: 'string', enum: ['0', '1'], default: '0' }, description: 'Set 1 untuk view di browser, 0 untuk download' }
+        ],
+        responses: {
+          '200': { description: 'Konten file (binary stream)' },
+          '401': { description: 'Unauthorized' },
+          '404': { description: 'File not found' },
+          '429': { description: 'Rate limit exceeded' }
+        }
+      }
+    },
     '/api/integrations/uploads': {
       get: {
         tags: ['integration-uploads'],
