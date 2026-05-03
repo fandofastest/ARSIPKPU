@@ -1,1 +1,2 @@
-export { runtime, GET } from '@/app/api/openapi/inbox/route';
+export const runtime = 'nodejs';
+export { GET } from '@/app/api/openapi/inbox/route';
