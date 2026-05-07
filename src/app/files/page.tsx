@@ -217,6 +217,7 @@ function FilesPageContent() {
   const [detailItem, setDetailItem] = useState<ArchiveItem | null>(null);
 
   const [openMenu, setOpenMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [gdriveBusyId, setGdriveBusyId] = useState<string | null>(null);
   const [gdriveUnlinkBusyId, setGdriveUnlinkBusyId] = useState<string | null>(null);
   const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
@@ -1222,7 +1223,8 @@ function FilesPageContent() {
 
           {loading ? <div style={{ color: 'var(--muted)' }}>Loading…</div> : null}
 
-          <div className="tableWrap">
+          {/* Desktop View: Table */}
+          <div className="tableWrap hide-mobile">
             <table className="table">
               <thead>
                 <tr>
@@ -1234,10 +1236,7 @@ function FilesPageContent() {
                 </tr>
               </thead>
               <tbody>
-              {items.map((it) => {
-                const canEdit = canManageItem(it, me);
-
-                return (
+                {items.map((it) => (
                   <tr key={it._id} onClick={() => openDetail(it)} style={{ cursor: 'pointer' }}>
                     <td>
                       <div className="fileCellTitle" title={it.title || '-'}>
@@ -1252,10 +1251,10 @@ function FilesPageContent() {
                         </div>
                       ) : null}
                     </td>
-                    <td style={{ color: '#9ca3af', whiteSpace: 'nowrap' }} title={(it as unknown as { archiveNumber?: string }).archiveNumber || ''}>
-                      {(it as unknown as { archiveNumber?: string }).archiveNumber || '-'}
+                    <td style={{ color: '#9ca3af', whiteSpace: 'nowrap' }}>
+                      {(it as any).archiveNumber || '-'}
                     </td>
-                    <td title={it.ocrStatus === 'failed' ? it.ocrError || '' : ''}>
+                    <td>
                       <span className={ocrBadgeClass(it.ocrStatus)}>
                         <span className="badgeDot" />
                         {it.ocrStatus || '-'}
@@ -1280,20 +1279,114 @@ function FilesPageContent() {
                       </div>
                     </td>
                   </tr>
-                );
-              })}
-
-              {items.length === 0 && !loading ? (
-                <tr>
-                  <td colSpan={5} style={{ padding: 18 }}>
-                    <div style={{ fontWeight: 800, marginBottom: 4 }}>No files found</div>
-                    <div style={{ color: 'var(--muted)' }}>Try adjusting filters, or upload a new document.</div>
-                  </td>
-                </tr>
-              ) : null}
+                ))}
               </tbody>
             </table>
           </div>
+
+          {/* Mobile View: Accordion */}
+          <div className="fileList hide-desktop">
+            {items.map((it) => {
+              const isExpanded = expandedId === it._id;
+              const canEdit = canManageItem(it, me);
+              const visibility = itemVisibility(it);
+
+              return (
+                <div key={it._id} className={`fileItem ${isExpanded ? 'fileItemExpanded' : ''}`}>
+                  <div className="fileItemHeader" onClick={() => setExpandedId(isExpanded ? null : it._id)}>
+                    <div className="fileItemTitleArea">
+                      <div className="fileItemTitle">
+                        {it.title?.trim() ? it.title : it.originalName}
+                      </div>
+                      <div className="fileItemSubtitle">
+                        <span>📅 {new Date(it.createdAt).toLocaleDateString()}</span>
+                        <span>📂 {it.category || 'Uncategorized'}</span>
+                        <span className={ocrBadgeClass(it.ocrStatus)}>
+                          <span className="badgeDot" />
+                          {it.ocrStatus || 'pending'}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: 20, transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                        ▼
+                      </span>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="fileItemContent">
+                      <div className="fileItemGrid">
+                        <div>
+                          <div className="fileDetailLabel">Original Filename</div>
+                          <div className="fileDetailValue">{it.originalName}</div>
+                        </div>
+                        <div>
+                          <div className="fileDetailLabel">Nomor Arsip</div>
+                          <div className="fileDetailValue">{(it as any).archiveNumber || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="fileDetailLabel">Jenis Dokumen</div>
+                          <div className="fileDetailValue">{it.docKind || it.type || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="fileDetailLabel">Nomor Dokumen</div>
+                          <div className="fileDetailValue">{it.docNumber || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="fileDetailLabel">Visibility</div>
+                          <div className="fileDetailValue" style={{ textTransform: 'capitalize' }}>
+                            {visibility} {visibility === 'shared' ? `(${it.sharedWith?.length || 0} users)` : ''}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="fileDetailLabel">Size</div>
+                          <div className="fileDetailValue">{Math.round(it.size / 1024)} KB</div>
+                        </div>
+                      </div>
+
+                      {q.trim() && it.searchSnippet ? (
+                        <div style={{ marginTop: 16, padding: 12, background: 'var(--panel)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                          <div className="fileDetailLabel">Search Match (OCR)</div>
+                          <div style={{ fontSize: 13, lineHeight: 1.5 }}>{renderSnippet(it.searchSnippet, q)}</div>
+                        </div>
+                      ) : null}
+
+                      <div className="fileItemActions">
+                        <button className="btn" onClick={() => openPreview(it)}>Pratinjau</button>
+                        <button className="btn btnSecondary" onClick={() => openDetail(it)}>Detail Lengkap</button>
+                        {canEdit && (
+                          <>
+                            <button className="btn btnSecondary" onClick={() => openEdit(it)}>Edit Metadata</button>
+                            <button className="btn btnSecondary" onClick={() => {
+                              setShareItem(it);
+                              setShareVisibility(itemVisibility(it));
+                              setShareSelected(it.sharedWith || []);
+                              setShareOpen(true);
+                            }}>Share</button>
+                          </>
+                        )}
+                        {me && (me.role === 'admin' || isOwnerItem(it, me)) && (
+                          <button className="btn btnSecondary" style={{ color: 'var(--danger)' }} onClick={() => openDeleteConfirm(it)}>Delete</button>
+                        )}
+                        {it.gdriveLink && (
+                          <a href={it.gdriveLink} target="_blank" rel="noreferrer" className="btn btnSecondary">Google Drive</a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {items.length === 0 && !loading ? (
+            <div className="card" style={{ padding: 32, textAlign: 'center' }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>📁</div>
+              <h2 style={{ margin: 0 }}>No files found</h2>
+              <p style={{ color: 'var(--muted)' }}>Try adjusting your filters or search keywords.</p>
+            </div>
+          ) : null}
 
           <div style={{ height: 12 }} />
 
@@ -1516,7 +1609,7 @@ function FilesPageContent() {
               </label>
 
               {uploadHybridEnabled && uploadFiles.length ? (
-                <div style={{ marginTop: 10, border: '1px solid var(--border)', borderRadius: 12, padding: 10, maxHeight: 300, overflow: 'auto' }}>
+                <div style={{ marginTop: 10, border: '1px solid var(--border)', borderRadius: 12, padding: 10, maxHeight: 400, overflow: 'auto' }}>
                   <div style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 8 }}>
                     Metadata sudah terisi otomatis. Tinggal sesuaikan yang perlu.
                   </div>
@@ -1587,9 +1680,9 @@ function FilesPageContent() {
 
               <div style={{ height: 12 }} />
 
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn" type="button" onClick={doUpload} disabled={!uploadFiles.length || uploading}>
-                  {uploading ? 'Uploading…' : 'Upload'}
+              <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
+                <button className="btn btnPrimary" type="button" onClick={doUpload} disabled={!uploadFiles.length || uploading} style={{ width: '100%', padding: '12px', fontSize: '16px' }}>
+                  {uploading ? 'Uploading…' : '🚀 Mulai Unggah'}
                 </button>
               </div>
             </div>

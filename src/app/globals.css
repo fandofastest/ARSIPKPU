@@ -671,6 +671,7 @@ textarea {
   justify-content: center;
   padding: 24px;
   z-index: 50;
+  overflow-y: auto;
 }
 
 .modal {
@@ -800,3 +801,264 @@ h2 {
     flex-wrap: wrap;
   }
 }
+
+/* Login Split Layout */
+.loginSplitLayout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.loginIllustration {
+  display: none;
+  flex: 1;
+}
+
+.loginFormArea {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg);
+}
+
+@media (min-width: 768px) {
+  .loginIllustration {
+    display: flex;
+  }
+}
+
+/* Accordion List */
+.fileList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fileItem {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.fileItem:hover {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.fileItemExpanded {
+  border-color: var(--primary);
+  box-shadow: var(--shadow);
+  transform: translateY(-2px);
+}
+
+.fileItemHeader {
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  gap: 16px;
+}
+
+.fileItemTitleArea {
+  flex: 1;
+  min-width: 0;
+}
+
+.fileItemTitle {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.fileItemSubtitle {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fileItemContent {
+  padding: 20px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 50%, var(--panel));
+  animation: slideDown 0.3s ease-out;
+}
+
+.fileItemGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.fileDetailLabel {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.fileDetailValue {
+  font-size: 14px;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.fileItemActions {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ocrBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.hide-desktop {
+  display: block;
+}
+.hide-mobile {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .hide-desktop {
+    display: none !important;
+  }
+  .hide-mobile {
+    display: block !important;
+  }
+}
+
+/* Swagger UI Dark Mode Overrides */
+html[data-theme='dark'] .swagger-ui {
+  filter: none;
+  background-color: transparent !important;
+  color: var(--text) !important;
+}
+
+html[data-theme='dark'] .swagger-ui .info .title,
+html[data-theme='dark'] .swagger-ui .info li,
+html[data-theme='dark'] .swagger-ui .info p,
+html[data-theme='dark'] .swagger-ui .info table,
+html[data-theme='dark'] .swagger-ui .opblock-tag,
+html[data-theme='dark'] .swagger-ui .opblock .opblock-summary-operation-id,
+html[data-theme='dark'] .swagger-ui .opblock .opblock-summary-path,
+html[data-theme='dark'] .swagger-ui .opblock .opblock-summary-description,
+html[data-theme='dark'] .swagger-ui .tabli button,
+html[data-theme='dark'] .swagger-ui label,
+html[data-theme='dark'] .swagger-ui .model-title,
+html[data-theme='dark'] .swagger-ui .parameter__name,
+html[data-theme='dark'] .swagger-ui .parameter__type,
+html[data-theme='dark'] .swagger-ui .response-col_status,
+html[data-theme='dark'] .swagger-ui .response-col_description,
+html[data-theme='dark'] .swagger-ui .opblock-description-wrapper p,
+html[data-theme='dark'] .swagger-ui .opblock-title_normal,
+html[data-theme='dark'] .swagger-ui .model,
+html[data-theme='dark'] .swagger-ui .model-box-control:focus {
+  color: var(--text) !important;
+}
+
+html[data-theme='dark'] .swagger-ui .opblock-section-title {
+  color: var(--muted) !important;
+}
+
+html[data-theme='dark'] .swagger-ui .opblock {
+  background-color: var(--panel2) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+}
+
+html[data-theme='dark'] .swagger-ui select,
+html[data-theme='dark'] .swagger-ui input {
+  background-color: var(--inputBg) !important;
+  color: var(--text) !important;
+  border-color: var(--inputBorder) !important;
+}
+
+html[data-theme='dark'] .swagger-ui .btn {
+  background-color: var(--secondary) !important;
+  color: var(--secondaryText) !important;
+  border-color: var(--border) !important;
+  box-shadow: none !important;
+}
+
+html[data-theme='dark'] .swagger-ui .btn.execute {
+  background-color: var(--primary) !important;
+  color: var(--primaryText) !important;
+  border: none !important;
+}
+
+html[data-theme='dark'] .swagger-ui .scheme-container {
+  background-color: var(--panel) !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid var(--border) !important;
+  padding: 20px 0 !important;
+}
+
+html[data-theme='dark'] .swagger-ui .opblock.opblock-post {
+  background: color-mix(in srgb, #49cc90 8%, var(--panel2)) !important;
+  border-color: #49cc90 !important;
+}
+html[data-theme='dark'] .swagger-ui .opblock.opblock-get {
+  background: color-mix(in srgb, #61affe 8%, var(--panel2)) !important;
+  border-color: #61affe !important;
+}
+html[data-theme='dark'] .swagger-ui .opblock.opblock-put {
+  background: color-mix(in srgb, #fca130 8%, var(--panel2)) !important;
+  border-color: #fca130 !important;
+}
+html[data-theme='dark'] .swagger-ui .opblock.opblock-delete {
+  background: color-mix(in srgb, #f93e3e 8%, var(--panel2)) !important;
+  border-color: #f93e3e !important;
+}
+
+html[data-theme='dark'] .swagger-ui section.models {
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  margin-top: 20px !important;
+}
+
+html[data-theme='dark'] .swagger-ui section.models.is-open h4 {
+  border-bottom: 1px solid var(--border) !important;
+}
+
+html[data-theme='dark'] .swagger-ui .model-box {
+  background: var(--bg2) !important;
+  border-radius: 8px !important;
+  padding: 10px !important;
+}
+
+html[data-theme='dark'] .swagger-ui .copy-to-clipboard {
+  background: var(--secondary) !important;
+  border-radius: 6px !important;
+}
+

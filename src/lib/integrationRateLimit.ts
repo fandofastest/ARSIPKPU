@@ -39,5 +39,9 @@ export const RATE_RULES = {
   LIST: [
     { keySuffix: 'list_1m', limit: Number(process.env.INTEGRATION_RATE_LIST_PER_MIN ?? '120'), windowMs: 60_000 },
     { keySuffix: 'list_10s', limit: Number(process.env.INTEGRATION_RATE_LIST_BURST_10S ?? '30'), windowMs: 10_000 }
+  ],
+  DOWNLOAD: [
+    { keySuffix: 'dl_1m', limit: Number(process.env.INTEGRATION_RATE_DOWNLOAD_PER_MIN ?? '120'), windowMs: 60_000 },
+    { keySuffix: 'dl_10s', limit: Number(process.env.INTEGRATION_RATE_DOWNLOAD_BURST_10S ?? '30'), windowMs: 10_000 }
   ]
 } as const;

@@ -160,8 +160,8 @@ function NavItem({
 
 function NavGroupSettings({ pathname, role }: { pathname: string; role?: string }) {
   const isAdmin = role === 'admin';
-  const [open, setOpen] = useState(pathname.startsWith('/settings'));
-  const isActive = pathname.startsWith('/settings');
+  const isActive = pathname.startsWith('/settings') || pathname.startsWith('/docs');
+  const [open, setOpen] = useState(isActive);
 
   return (
     <div className="navGroup">
@@ -188,6 +188,7 @@ function NavGroupSettings({ pathname, role }: { pathname: string; role?: string 
               <Link href="/settings/categories" className={`navSubItem ${pathname === '/settings/categories' ? 'navSubItemActive' : ''}`}>Kategori Arsip</Link>
               <Link href="/settings/upload" className={`navSubItem ${pathname === '/settings/upload' ? 'navSubItemActive' : ''}`}>Upload</Link>
               <Link href="/settings/integrations" className={`navSubItem ${pathname === '/settings/integrations' ? 'navSubItemActive' : ''}`}>Integrasi Cloud</Link>
+              <Link href="/docs/integrations" className={`navSubItem ${pathname === '/docs/integrations' ? 'navSubItemActive' : ''}`}>Docs API Integrasi</Link>
               <Link href="/settings/ocr-logs" className={`navSubItem ${pathname === '/settings/ocr-logs' ? 'navSubItemActive' : ''}`}>Log OCR</Link>
               <Link href="/settings/backup" className={`navSubItem ${pathname === '/settings/backup' ? 'navSubItemActive' : ''}`}>Backup & Restore</Link>
             </>
@@ -218,19 +219,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
-      .then((r) => r.json() as Promise<MeResponse>)
+      .then(async (r) => {
+        if (r.status === 401) {
+          window.location.href = '/login';
+          return null;
+        }
+        return r.json() as Promise<MeResponse>;
+      })
       .then((d) => {
+        if (!d) return;
         if ('success' in d) {
           setMe(d.data);
           if (d.data.profileComplete === false && pathname !== '/settings/profile') {
             router.replace('/settings/profile?required=1');
           }
+        } else if ('error' in d && (d.error === 'Unauthorized' || d.error === 'UNAUTHORIZED')) {
+          window.location.href = '/login';
         }
       })
       .catch(() => {
         // ignore
       });
   }, [pathname, router]);
+
 
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -240,9 +251,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-    router.push('/login');
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      
+      // Aggressively clear client-side state
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+      localStorage.removeItem('theme'); // keep theme if we want, but let's be safe. Actually, better to just clear auth specific stuff if any, but let's clear all.
+      sessionStorage.clear();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      window.location.href = '/login';
+    }
   }
+
+
+
 
   function submitTopSearch() {
     const q = topQuery.trim();

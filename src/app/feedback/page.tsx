@@ -124,6 +124,7 @@ export default function FeedbackPage() {
           {loading ? (
             <div style={{ color: 'var(--muted)', textAlign: 'center', padding: '20px' }}>Memuat daftar laporan...</div>
           ) : (
+          <div className="tableWrap">
             <table className="table">
               <thead>
                 <tr>
@@ -183,6 +184,7 @@ export default function FeedbackPage() {
                 ) : null}
               </tbody>
             </table>
+          </div>
           )}
         </div>
 

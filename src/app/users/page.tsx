@@ -282,82 +282,84 @@ export default function UsersPage() {
 
           {loading ? <div style={{ color: '#9ca3af' }}>Loading…</div> : null}
 
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>NIP</th>
-                <th>Gol</th>
-                <th>Jabatan</th>
-                <th>Phone</th>
-                <th>Role</th>
-                <th>Unit</th>
-                <th>Created</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((u) => (
-                <tr key={u._id}>
-                  <td>{u.nama}</td>
-                  <td>{u.nip || '-'}</td>
-                  <td>{u.golongan || '-'}</td>
-                  <td>{u.jabatan || '-'}</td>
-                  <td>{u.phone}</td>
-                  <td>{u.role}</td>
-                  <td>{u.unit || '-'}</td>
-                  <td>{new Date(u.createdAt).toLocaleString()}</td>
-                  <td>
-                    <div className="menuWrap" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        className="btn btnSecondary"
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenMenuId((cur) => (cur === u._id ? null : u._id));
-                        }}
-                      >
-                        ⋯
-                      </button>
-                      {openMenuId === u._id ? (
-                        <div className="menu" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            className="menuItem"
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMenuId(null);
-                              openEdit(u);
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="menuItem"
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMenuId(null);
-                              openDelete(u);
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {items.length === 0 && !loading ? (
+          <div className="tableWrap">
+            <table className="table">
+              <thead>
                 <tr>
-                  <td colSpan={9} style={{ color: 'var(--muted)' }}>
-                    No users
-                  </td>
+                  <th>Name</th>
+                  <th>NIP</th>
+                  <th>Gol</th>
+                  <th>Jabatan</th>
+                  <th>Phone</th>
+                  <th>Role</th>
+                  <th>Unit</th>
+                  <th>Created</th>
+                  <th></th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((u) => (
+                  <tr key={u._id}>
+                    <td>{u.nama}</td>
+                    <td>{u.nip || '-'}</td>
+                    <td>{u.golongan || '-'}</td>
+                    <td>{u.jabatan || '-'}</td>
+                    <td>{u.phone}</td>
+                    <td>{u.role}</td>
+                    <td>{u.unit || '-'}</td>
+                    <td>{new Date(u.createdAt).toLocaleString()}</td>
+                    <td>
+                      <div className="menuWrap" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="btn btnSecondary"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId((cur) => (cur === u._id ? null : u._id));
+                          }}
+                        >
+                          ⋯
+                        </button>
+                        {openMenuId === u._id ? (
+                          <div className="menu" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className="menuItem"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(null);
+                                openEdit(u);
+                              }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              className="menuItem"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenMenuId(null);
+                                openDelete(u);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {items.length === 0 && !loading ? (
+                  <tr>
+                    <td colSpan={9} style={{ color: 'var(--muted)' }}>
+                      No users
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {createOpen ? (
