@@ -25,14 +25,14 @@ export default function GuidePage() {
         <div className="card" id="printable-guide" style={{ padding: '40px', lineHeight: '1.6' }}>
           <div style={{ textAlign: 'center', borderBottom: '2px solid var(--border)', paddingBottom: '20px', marginBottom: '30px' }}>
             <img src="/logo.png" alt="Logo KPU" style={{ width: '80px', marginBottom: '16px' }} />
-            <h1 style={{ margin: 0, fontSize: '24px' }}>PANDUAN PENGGUNAAN SISTEM SIPADU HUKUM</h1>
-            <h2 style={{ margin: 0, fontSize: '18px' }}>Sistem Informasi Terpadu produk Hukum</h2>
+            <h1 style={{ margin: 0, fontSize: '24px' }}>PANDUAN PENGGUNAAN KPU SMART ARCHIVE</h1>
+            <h2 style={{ margin: 0, fontSize: '18px' }}>Sistem arsip pintar dengan pencarian cepat dan klasifikasi otomatis.</h2>
           </div>
 
           <section style={{ marginBottom: '30px' }}>
             <h3 style={{ color: 'var(--primary)', borderLeft: '4px solid var(--primary)', paddingLeft: '12px' }}>1. Pendahuluan</h3>
             <p>
-              Sistem SIPADU HUKUM dirancang untuk mendigitalisasi, mengorganisir, dan mengamankan seluruh dokumen produk hukum dengan standar klasifikasi yang ketat. Sistem ini mendukung pengelolaan arsip dinamis dan statis dengan kebijakan retensi otomatis.
+              KPU Smart Archive dirancang untuk mendigitalisasi, mengorganisir, dan mengamankan seluruh dokumen dengan standar klasifikasi yang ketat. Sistem ini mendukung pengelolaan arsip dinamis dan statis dengan kebijakan retensi otomatis.
             </p>
           </section>
 
@@ -75,7 +75,7 @@ export default function GuidePage() {
               color: 'var(--muted)'
             }}
           >
-            © 2026 SIPADU HUKUM - Dokumen ini dihasilkan secara otomatis oleh Sistem SIPADU HUKUM
+            © 2026 KPU Smart Archive - Dokumen ini dihasilkan secara otomatis oleh KPU Smart Archive
           </div>
         </div>
       </div>

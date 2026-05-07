@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'SIPADU HUKUM',
-  description: 'Sistem Informasi Terpadu produk Hukum'
+  title: 'KPU Smart Archive',
+  description: 'Sistem arsip pintar dengan pencarian cepat dan klasifikasi otomatis.'
 };
 
 export default function RootLayout({

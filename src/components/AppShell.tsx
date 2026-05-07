@@ -286,11 +286,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="appShell">
       <aside className="sidebar">
         <div className="sidebarBrand">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <img src="/logo.png" alt="Logo" style={{ width: '42px', height: 'auto' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <img src="/logo.png" alt="Logo" style={{ width: '28px', height: 'auto', flexShrink: 0 }} />
             <div>
-              <div className="sidebarBrandTitle">SIPADU HUKUM</div>
-              <div className="sidebarBrandSub">Sistem Informasi Terpadu produk Hukum</div>
+              <div className="sidebarBrandTitle">KPU Smart Archive</div>
+              <div className="sidebarBrandSub">Sistem arsip pintar dengan pencarian cepat dan klasifikasi otomatis.</div>
             </div>
           </div>
         </div>

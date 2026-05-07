@@ -2,11 +2,12 @@ html,
 body {
   padding: 0;
   margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
     Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 13px;
   background: var(--bg);
   color: var(--text);
-  line-height: 1.45;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -76,14 +77,14 @@ textarea {
 .container {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 24px 28px;
+  padding: 16px 20px;
 }
 
 .card {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 18px;
+  border-radius: 10px;
+  padding: 14px;
   box-shadow: var(--shadow);
 }
 
@@ -129,10 +130,10 @@ textarea {
 }
 
 .statValue {
-  font-size: 34px;
-  font-weight: 900;
+  font-size: 26px;
+  font-weight: 800;
   letter-spacing: -0.03em;
-  margin: 6px 0;
+  margin: 4px 0;
 }
 
 .cardGlass {
@@ -150,10 +151,11 @@ textarea {
   background: var(--primary);
   color: var(--primaryText);
   border: 1px solid color-mix(in srgb, var(--primary) 74%, #000000 26%);
-  padding: 10px 15px;
-  border-radius: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 700;
+  font-size: 12.5px;
+  font-weight: 600;
   letter-spacing: 0.01em;
   transition: transform 0.08s ease, filter 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
@@ -188,13 +190,14 @@ textarea {
 
 .input {
   width: 100%;
-  padding: 10px 13px;
-  border-radius: 12px;
+  padding: 6px 10px;
+  border-radius: 7px;
   border: 1px solid var(--inputBorder);
   background: var(--inputBg);
   color: var(--text);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  min-height: 42px;
+  font-size: 13px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  min-height: 32px;
 }
 
 .input:focus {
@@ -254,57 +257,62 @@ textarea {
 }
 
 .sidebar {
-  width: 276px;
+  width: 220px;
   background: color-mix(in srgb, var(--panel) 92%, transparent);
   border-right: 1px solid var(--border);
-  padding: 22px 16px;
+  padding: 14px 10px;
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow-y: auto;
   backdrop-filter: blur(16px);
 }
 
 .sidebarBrand {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 20px;
+  gap: 2px;
+  margin-bottom: 14px;
+  padding: 0 4px 12px;
+  border-bottom: 1px solid var(--border);
 }
 
 .sidebarBrandTitle {
-  font-size: 24px;
-  font-weight: 900;
-  letter-spacing: -0.03em;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .sidebarBrandSub {
-  font-size: 12px;
+  font-size: 10.5px;
   color: var(--muted);
-  font-weight: 600;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
 }
 
 .navGroup {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px;
 }
 
 .navItem {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 11px 12px;
-  border-radius: 12px;
+  gap: 7px;
+  padding: 7px 9px;
+  border-radius: 8px;
   border: 1px solid transparent;
   color: var(--muted);
-  font-weight: 600;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .navItem:hover {
@@ -314,18 +322,20 @@ textarea {
 
 .navItem svg {
   flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
   color: currentColor;
 }
 
 .navItemActive {
-  background: color-mix(in srgb, var(--primary) 14%, var(--panel));
+  background: color-mix(in srgb, var(--primary) 10%, var(--panel));
   color: var(--text);
-  border-color: color-mix(in srgb, var(--primary) 34%, var(--border));
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 14%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  box-shadow: none;
 }
 
 .navItemSplit {
-  gap: 8px;
+  gap: 4px;
   padding: 0;
   overflow: hidden;
 }
@@ -334,10 +344,11 @@ textarea {
   flex: 1;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 7px;
   color: inherit;
-  padding: 11px 12px;
-  font-weight: 700;
+  padding: 7px 9px;
+  font-weight: 500;
+  font-size: 13px;
 }
 
 .navItemToggle {
@@ -371,24 +382,24 @@ textarea {
 .navSubmenu {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  margin: -1px 0 8px;
-  margin-left: 12px;
-  padding: 3px 0 0 10px;
-  border-left: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border));
+  gap: 1px;
+  margin: 0 0 4px;
+  margin-left: 10px;
+  padding: 2px 0 0 8px;
+  border-left: 1px solid color-mix(in srgb, var(--primary) 22%, var(--border));
 }
 
 .navSubItem {
   display: block;
   position: relative;
-  padding: 7px 10px 7px 12px;
-  border-radius: 10px;
+  padding: 5px 8px 5px 10px;
+  border-radius: 6px;
   color: var(--muted);
-  font-size: 12.5px;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 500;
   border: 1px solid transparent;
   opacity: 0.95;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .navSubItem::before {
@@ -421,7 +432,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--panel2) 88%, transparent);
   position: sticky;
@@ -727,18 +738,18 @@ h1,
 h2,
 h3 {
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
 }
 
 h1 {
-  font-size: clamp(1.35rem, 1.1rem + 0.9vw, 1.9rem);
-  font-weight: 850;
-  margin-bottom: 16px;
+  font-size: clamp(1.1rem, 0.95rem + 0.6vw, 1.45rem);
+  font-weight: 700;
+  margin-bottom: 12px;
 }
 
 h2 {
-  font-size: 1.2rem;
-  font-weight: 800;
+  font-size: 0.975rem;
+  font-weight: 700;
 }
 
 @media (max-width: 1024px) {
