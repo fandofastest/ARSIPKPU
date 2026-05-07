@@ -1,4 +1,4 @@
-# Digital Archive System (Next.js + MongoDB + Filesystem Storage)
+# SIPADU HUKUM - Sistem Informasi Terpadu produk Hukum
 
 Sistem arsip digital internal dengan OCR otomatis.
 

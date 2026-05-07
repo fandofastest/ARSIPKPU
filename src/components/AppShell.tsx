@@ -259,10 +259,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="sidebar">
         <div className="sidebarBrand">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <img src="/logo.png" alt="Logo KPU" style={{ width: '42px', height: 'auto' }} />
+            <img src="/logo.png" alt="Logo" style={{ width: '42px', height: 'auto' }} />
             <div>
-              <div className="sidebarBrandTitle">E-Arsip KPU</div>
-              <div className="sidebarBrandSub">KOTA DUMAI</div>
+              <div className="sidebarBrandTitle">SIPADU HUKUM</div>
+              <div className="sidebarBrandSub">Sistem Informasi Terpadu produk Hukum</div>
             </div>
           </div>
         </div>

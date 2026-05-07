@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Digital Archive System',
-  description: 'Internal digital archive system'
+  title: 'SIPADU HUKUM',
+  description: 'Sistem Informasi Terpadu produk Hukum'
 };
 
 export default function RootLayout({

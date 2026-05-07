@@ -35,9 +35,9 @@ export default function LoginPage() {
   return (
     <div className="container" style={{ maxWidth: 440, marginTop: '8vh' }}>
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <img src="/logo.png" alt="Logo KPU" style={{ width: 100, marginBottom: 16 }} />
-        <h1 style={{ margin: 0 }}>E-Arsip KPU</h1>
-        <p style={{ color: 'var(--muted)', marginTop: 8 }}>KOTA DUMAI</p>
+        <img src="/logo.png" alt="Logo" style={{ width: 100, marginBottom: 16 }} />
+        <h1 style={{ margin: 0 }}>SIPADU HUKUM</h1>
+        <p style={{ color: 'var(--muted)', marginTop: 8 }}>Sistem Informasi Terpadu produk Hukum</p>
       </div>
       <div className="card" style={{ padding: 32 }}>
         <h2 style={{ marginBottom: 24, textAlign: 'center' }}>Silakan Masuk</h2>

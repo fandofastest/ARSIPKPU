@@ -42,7 +42,7 @@ type StatsResp =
     }
   | { error: string };
 
-const PIE_COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#f97316', '#84cc16', '#ec4899'];
+const PIE_COLORS = ['#dc2626', '#ef4444', '#b91c1c', '#f87171', '#991b1b', '#fca5a5', '#7f1d1d', '#fecaca', '#450a0a', '#fee2e2'];
 
 function PieChartCard({
   title,
