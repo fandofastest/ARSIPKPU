@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -65,7 +66,7 @@ export default function GuidePage() {
                 <li>Ketik alamat URL aplikasi KPU Smart Archive pada bilah alamat (address bar).</li>
                 <li>Pada halaman Login, masukkan <strong>Username</strong> Anda di kolom pertama.</li>
                 <li>Masukkan <strong>Password</strong> Anda di kolom kedua dengan benar (perhatikan huruf besar/kecil).</li>
-                <li>Klik tombol <strong>"Login"</strong> atau <strong>"Masuk"</strong>.</li>
+                <li>Klik tombol <strong>&quot;Login&quot;</strong> atau <strong>&quot;Masuk&quot;</strong>.</li>
                 <li>Jika berhasil, Anda akan otomatis diarahkan ke halaman Dashboard utama. Jika gagal, periksa kembali penulisan username dan password Anda.</li>
               </ol>
               
@@ -73,7 +74,7 @@ export default function GuidePage() {
               <ol>
                 <li>Lihat ke sudut kanan atas layar aplikasi.</li>
                 <li>Klik pada nama atau ikon profil Anda.</li>
-                <li>Pilih opsi <strong>"Logout"</strong> atau <strong>"Keluar"</strong> dari menu yang muncul.</li>
+                <li>Pilih opsi <strong>&quot;Logout&quot;</strong> atau <strong>&quot;Keluar&quot;</strong> dari menu yang muncul.</li>
                 <li>Anda akan dikembalikan ke halaman Login. Sangat disarankan untuk selalu melakukan Logout jika Anda menggunakan komputer publik atau berbagi komputer.</li>
               </ol>
             </div>
@@ -94,13 +95,13 @@ export default function GuidePage() {
 
           <section id="bab-3" className="print-page-break" style={{ marginBottom: '40px' }}>
             <h3 style={{ color: 'var(--primary)', borderBottom: '2px solid var(--border)', paddingBottom: '8px' }}>3. Manajemen Arsip (Menu Utama)</h3>
-            <p>Ini adalah fitur paling penting. Klik menu <strong>"Arsip"</strong> di sidebar sebelah kiri untuk membuka halaman ini.</p>
+            <p>Ini adalah fitur paling penting. Klik menu <strong>&quot;Arsip&quot;</strong> di sidebar sebelah kiri untuk membuka halaman ini.</p>
             
             <div style={{ paddingLeft: '20px' }}>
               <h4 style={{ marginBottom: '8px' }}>A. Cara Mencari Arsip</h4>
               <img src="/panduan/arsip.png" alt="Tampilan Arsip" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
               <ol>
-                <li>Pada bagian atas tabel Arsip, cari kotak teks berlabel <strong>"Cari dokumen..."</strong>.</li>
+                <li>Pada bagian atas tabel Arsip, cari kotak teks berlabel <strong>&quot;Cari dokumen...&quot;</strong>.</li>
                 <li>Ketik nomor surat, judul dokumen, atau kata kunci yang Anda ingat.</li>
                 <li>Sistem akan secara otomatis menyaring tabel saat Anda mengetik, menampilkan hanya dokumen yang relevan.</li>
                 <li>Anda juga bisa menggunakan tombol <strong>Filter</strong> (jika tersedia) untuk menyaring dokumen khusus berdasarkan tahun tertentu atau klasifikasi tertentu saja.</li>
@@ -109,43 +110,43 @@ export default function GuidePage() {
               <h4 style={{ marginBottom: '8px', marginTop: '24px' }}>B. Cara Menambahkan (Unggah) Arsip Baru</h4>
               <img src="/panduan/upload.png" alt="Tampilan Upload" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
               <ol>
-                <li>Di halaman Arsip, klik tombol berwarna biru <strong>"+ Tambah Arsip"</strong> di kanan atas tabel.</li>
+                <li>Di halaman Arsip, klik tombol berwarna biru <strong>&quot;+ Tambah Arsip&quot;</strong> di kanan atas tabel.</li>
                 <li>Sebuah form isian akan muncul (berupa pop-up atau halaman baru).</li>
                 <li>Isi <strong>Nomor Dokumen</strong> sesuai dengan nomor registrasi fisik surat.</li>
                 <li>Isi <strong>Judul Dokumen</strong> dengan jelas dan deskriptif.</li>
                 <li>Pilih <strong>Tanggal Dokumen</strong> dengan mengklik kolom tanggal, kalender kecil akan muncul untuk Anda pilih.</li>
                 <li>Pada bagian <strong>Klasifikasi</strong>, pilih <em>Kategori Induk</em> terlebih dahulu (misal: HK - Hukum), kemudian pilih <em>Sub-Klasifikasi</em> spesifiknya (misal: HK.01 - Peraturan).</li>
-                <li>Pada opsi <strong>Tingkat Keamanan</strong>, pilih <em>"Biasa"</em> jika dokumen boleh dilihat siapa saja, atau <em>"Rahasia"</em> jika dokumen bersifat tertutup (hanya Anda dan Admin yang bisa melihatnya nanti).</li>
+                <li>Pada opsi <strong>Tingkat Keamanan</strong>, pilih <em>&quot;Biasa&quot;</em> jika dokumen boleh dilihat siapa saja, atau <em>&quot;Rahasia&quot;</em> jika dokumen bersifat tertutup (hanya Anda dan Admin yang bisa melihatnya nanti).</li>
                 <li>Tambahkan <strong>Uraian Singkat / Deskripsi</strong> (opsional namun disarankan) untuk memudahkan pencarian di kemudian hari.</li>
-                <li>Pada bagian file, klik kotak area unggah atau tombol <strong>"Pilih File"</strong>. Cari file PDF dokumen di komputer Anda (Pastikan ukuran file tidak melebihi 10MB).</li>
-                <li>Setelah semua terisi dan file PDF sudah dipilih, klik tombol <strong>"Simpan"</strong>.</li>
-                <li>Tunggu hingga progres unggahan selesai dan muncul notifikasi "Berhasil". Arsip kini telah masuk ke tabel.</li>
+                <li>Pada bagian file, klik kotak area unggah atau tombol <strong>&quot;Pilih File&quot;</strong>. Cari file PDF dokumen di komputer Anda (Pastikan ukuran file tidak melebihi 10MB).</li>
+                <li>Setelah semua terisi dan file PDF sudah dipilih, klik tombol <strong>&quot;Simpan&quot;</strong>.</li>
+                <li>Tunggu hingga progres unggahan selesai dan muncul notifikasi &quot;Berhasil&quot;. Arsip kini telah masuk ke tabel.</li>
               </ol>
 
               <h4 style={{ marginBottom: '8px', marginTop: '24px' }}>C. Cara Melihat, Mengunduh, Mengubah, dan Menghapus Arsip</h4>
-              <p>Pada setiap baris dokumen di tabel Arsip, perhatikan kolom "Aksi" (Action) di sebelah paling kanan:</p>
+              <p>Pada setiap baris dokumen di tabel Arsip, perhatikan kolom &quot;Aksi&quot; (Action) di sebelah paling kanan:</p>
               <img src="/panduan/detail%20dokumen.png" alt="Tampilan Detail Dokumen" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
               <ol>
                 <li><strong>Melihat Detail (Ikon Mata):</strong> Klik ikon ini untuk membuka layar pratinjau (preview) PDF langsung di browser Anda tanpa harus mengunduhnya, beserta seluruh metadata dokumen.</li>
                 <li><strong>Mengunduh File (Ikon Panah Bawah/Download):</strong> Klik ikon ini jika Anda ingin menyimpan file PDF tersebut ke dalam folder komputer lokal Anda.</li>
-                <li><strong>Mengedit Data (Ikon Pensil):</strong> Jika ada kesalahan ketik saat mengunggah, klik ikon ini. Form pengisian akan muncul kembali, Anda bisa memperbaiki judul, nomor, atau mengganti file, lalu klik "Simpan Perubahan".</li>
-                <li><strong>Menghapus (Ikon Tempat Sampah):</strong> Klik ikon ini untuk menghapus data. Sistem akan meminta konfirmasi ("Apakah Anda yakin?"). Jika ya, klik OK. <em>Catatan: Fitur hapus biasanya hanya terbuka untuk pengguna level Admin.</em></li>
+                <li><strong>Mengedit Data (Ikon Pensil):</strong> Jika ada kesalahan ketik saat mengunggah, klik ikon ini. Form pengisian akan muncul kembali, Anda bisa memperbaiki judul, nomor, atau mengganti file, lalu klik &quot;Simpan Perubahan&quot;.</li>
+                <li><strong>Menghapus (Ikon Tempat Sampah):</strong> Klik ikon ini untuk menghapus data. Sistem akan meminta konfirmasi (&quot;Apakah Anda yakin?&quot;). Jika ya, klik OK. <em>Catatan: Fitur hapus biasanya hanya terbuka untuk pengguna level Admin.</em></li>
               </ol>
 
               <h4 style={{ marginBottom: '8px', marginTop: '24px' }}>D. Mengembalikan Arsip yang Terhapus (Tong Sampah)</h4>
               <p>Arsip yang dihapus tidak langsung hilang, melainkan masuk ke Tong Sampah (Trash).</p>
               <img src="/panduan/trash.png" alt="Tampilan Tong Sampah" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
               <ol>
-                <li>Buka menu <strong>"Tong Sampah"</strong> di navigasi kiri (Jika Anda adalah Admin).</li>
-                <li>Pilih dokumen yang ingin dikembalikan, lalu klik tombol <strong>"Restore / Kembalikan"</strong>.</li>
-                <li>Dokumen akan kembali muncul di tabel Arsip utama. Jika Anda mengklik <strong>"Hapus Permanen"</strong>, barulah dokumen terhapus selamanya.</li>
+                <li>Buka menu <strong>&quot;Tong Sampah&quot;</strong> di navigasi kiri (Jika Anda adalah Admin).</li>
+                <li>Pilih dokumen yang ingin dikembalikan, lalu klik tombol <strong>&quot;Restore / Kembalikan&quot;</strong>.</li>
+                <li>Dokumen akan kembali muncul di tabel Arsip utama. Jika Anda mengklik <strong>&quot;Hapus Permanen&quot;</strong>, barulah dokumen terhapus selamanya.</li>
               </ol>
             </div>
           </section>
 
           <section id="bab-4" className="print-page-break" style={{ marginBottom: '40px' }}>
             <h3 style={{ color: 'var(--primary)', borderBottom: '2px solid var(--border)', paddingBottom: '8px' }}>4. Pengaturan Sistem (Menu Khusus Administrator)</h3>
-            <p>Menu "Pengaturan" di sidebar hanya muncul jika Anda login sebagai akun dengan peran <strong>Admin</strong>.</p>
+            <p>Menu &quot;Pengaturan&quot; di sidebar hanya muncul jika Anda login sebagai akun dengan peran <strong>Admin</strong>.</p>
             <img src="/panduan/pengaturan.png" alt="Tampilan Pengaturan" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
             
             <div style={{ paddingLeft: '20px' }}>
@@ -154,7 +155,7 @@ export default function GuidePage() {
               <img src="/panduan/user.png" alt="Tampilan Manajemen Pengguna" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
               <ol>
                 <li>Pilih <strong>Pengaturan &gt; Manajemen Pengguna</strong>.</li>
-                <li>Untuk menambah akun, klik <strong>"+ Tambah Pengguna"</strong>.</li>
+                <li>Untuk menambah akun, klik <strong>&quot;+ Tambah Pengguna&quot;</strong>.</li>
                 <li>Isi Nama Lengkap, Username (yang akan dipakai login), dan Password (kata sandi awal).</li>
                 <li>Pilih <strong>Role</strong>:
                   <ul>
@@ -162,8 +163,7 @@ export default function GuidePage() {
                     <li><strong>User:</strong> Hanya bisa mengunggah dokumen, melihat dokumen biasa, dan melihat dokumen rahasia miliknya sendiri.</li>
                   </ul>
                 </li>
-                <li>Klik "Simpan". Jika ada pegawai yang mutasi/keluar, Admin dapat menggunakan ikon tempat sampah di sebelahnya untuk menghapus akun tersebut agar tidak bisa login lagi.</li>
-              </ol>
+                <li>Klik &quot;Simpan&quot;. Jika ada pegawai yang mutasi/keluar, Admin dapat menggunakan ikon tempat sampah di sebelahnya untuk menghapus akun tersebut agar tidak bisa login lagi.</li>              </ol>
 
               <h4 style={{ marginBottom: '8px', marginTop: '24px' }}>B. Manajemen Klasifikasi</h4>
               <p>Berfungsi untuk mengatur daftar kategori surat/arsip di instansi.</p>
@@ -171,9 +171,8 @@ export default function GuidePage() {
               <ol>
                 <li>Pilih <strong>Pengaturan &gt; Klasifikasi</strong>.</li>
                 <li>Tabel akan menampilkan daftar klasifikasi induk (Misal: KU - Keuangan).</li>
-                <li>Untuk menambah kategori baru, klik <strong>"+ Tambah Induk"</strong>. Masukkan kode dan nama.</li>
-                <li>Untuk menambah rincian dari kategori induk, klik tombol <strong>"+ Tambah Sub-Klasifikasi"</strong> pada baris kategori induk tersebut. Masukkan kode sub (Misal: KU.01) dan keterangannya.</li>
-                <li>Klasifikasi yang dibuat di sini akan muncul otomatis di pilihan dropdown (pilihan menu) saat pengguna biasa mengunggah arsip.</li>
+                <li>Untuk menambah kategori baru, klik <strong>&quot;+ Tambah Induk&quot;</strong>. Masukkan kode dan nama.</li>
+                <li>Untuk menambah rincian dari kategori induk, klik tombol <strong>&quot;+ Tambah Sub-Klasifikasi&quot;</strong> pada baris kategori induk tersebut. Masukkan kode sub (Misal: KU.01) dan keterangannya.</li>                <li>Klasifikasi yang dibuat di sini akan muncul otomatis di pilihan dropdown (pilihan menu) saat pengguna biasa mengunggah arsip.</li>
               </ol>
             </div>
           </section>
@@ -188,20 +187,17 @@ export default function GuidePage() {
                 <li>Cari tombol melayang (widget) berlogo percakapan / tanda tanya di <strong>pojok kanan bawah</strong> layar Anda.</li>
                 <li>Klik ikon tersebut, sebuah kotak form umpan balik akan muncul ke atas.</li>
                 <li>Pilih <strong>Jenis Masalah:</strong> Apakah itu Bug (Kerusakan), Saran, atau Pertanyaan.</li>
-                <li>Di kolom <strong>Deskripsi</strong>, ceritakan secara jelas langkah-langkah yang Anda lakukan sebelum menemukan error tersebut. (Contoh: "Saat saya klik tombol simpan arsip HK.01, loading terus dan tidak tersimpan").</li>
-                <li><strong>Lampirkan Bukti (Opsional namun sangat disarankan):</strong> Klik area unggah gambar untuk melampirkan screenshot (tangkapan layar) komputer Anda yang memperlihatkan error tersebut.</li>
-                <li>Klik <strong>"Kirim Laporan"</strong>.</li>
+                <li>Di kolom <strong>Deskripsi</strong>, ceritakan secara jelas langkah-langkah yang Anda lakukan sebelum menemukan error tersebut. (Contoh: &quot;Saat saya klik tombol simpan arsip HK.01, loading terus dan tidak tersimpan&quot;).</li>                <li><strong>Lampirkan Bukti (Opsional namun sangat disarankan):</strong> Klik area unggah gambar untuk melampirkan screenshot (tangkapan layar) komputer Anda yang memperlihatkan error tersebut.</li>
+                <li>Klik <strong>&quot;Kirim Laporan&quot;</strong>.</li>
               </ol>
 
               <h4 style={{ marginBottom: '8px', marginTop: '24px' }}>B. Mengelola Laporan Masuk (Khusus Administrator)</h4>
               <img src="/panduan/evaluasi%20laporan.png" alt="Tampilan Evaluasi Laporan" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
               <ol>
-                <li>Sebagai Admin, klik menu <strong>"Inbox"</strong> atau "Laporan Masuk" di sidebar kiri.</li>
+                <li>Sebagai Admin, klik menu <strong>&quot;Inbox&quot;</strong> atau &quot;Laporan Masuk&quot; di sidebar kiri.</li>
                 <li>Anda akan melihat daftar laporan yang dikirimkan oleh para pengguna.</li>
                 <li>Klik pada salah satu baris laporan untuk melihat detail keluhan dan gambar screenshot yang dilampirkan.</li>
-                <li>Jika masalah sedang diperbaiki oleh tim IT, ubah status laporan tersebut (melalui dropdown) dari "Baru" menjadi <strong>"Diproses"</strong>.</li>
-                <li>Jika masalah sudah tuntas, ubah statusnya menjadi <strong>"Selesai"</strong>. Pengguna pengirim secara konseptual mengetahui bahwa laporannya telah ditangani.</li>
-              </ol>
+                <li>Jika masalah sedang diperbaiki oleh tim IT, ubah status laporan tersebut (melalui dropdown) dari &quot;Baru&quot; menjadi <strong>&quot;Diproses&quot;</strong>.</li>                <li>Jika masalah sudah tuntas, ubah statusnya menjadi <strong>&quot;Selesai&quot;</strong>. Pengguna pengirim secara konseptual mengetahui bahwa laporannya telah ditangani.</li>              </ol>
             </div>
           </section>
 
