@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 
 export default function LoginPage() {
@@ -246,7 +247,7 @@ export default function LoginPage() {
 
         {/* Header */}
         <header className="login-header">
-          <img src="/logo.png" alt="Logo KPU" style={{ width: 48, height: 'auto' }} />
+          <Image src="/logo.png" alt="Logo KPU" width={48} height={48} priority />
           <div>
             <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text)', letterSpacing: '-0.01em' }}>
               KOMISI PEMILIHAN UMUM
@@ -277,7 +278,7 @@ export default function LoginPage() {
           <div className="login-right">
             <div className="login-card">
               <div style={{ textAlign: 'center', marginBottom: 32 }}>
-                <img src="/logo.png" alt="Logo KPU" style={{ width: 72, height: 'auto', marginBottom: 16 }} />
+                <Image src="/logo.png" alt="Logo KPU" width={72} height={72} priority style={{ marginBottom: 16 }} />
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', margin: '0 0 8px' }}>
                   Selamat Datang
                 </h2>

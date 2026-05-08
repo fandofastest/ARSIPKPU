@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -312,7 +313,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="sidebar">
         <div className="sidebarBrand">
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <img src="/logo.png" alt="Logo" style={{ width: '28px', height: 'auto', flexShrink: 0 }} />
+            <Image src="/logo.png" alt="Logo KPU" width={28} height={28} priority style={{ flexShrink: 0 }} />
             <div>
               <div className="sidebarBrandTitle">KPU Smart Archive</div>
               <div className="sidebarBrandSub">Sistem arsip pintar dengan pencarian cepat dan klasifikasi otomatis.</div>
