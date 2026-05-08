@@ -1086,8 +1086,18 @@ function FilesPageContent() {
 
         <div style={{ height: 12 }} />
 
-        {message ? <div style={{ display: 'none' }}>{message}</div> : null}
-        {error ? <div style={{ display: 'none' }}>{error}</div> : null}
+        {error ? (
+          <div className="alert alertError">
+            <div style={{ fontWeight: 900 }}>Gagal memuat data</div>
+            <div className="alertText">{error}</div>
+          </div>
+        ) : null}
+        {message ? (
+          <div className="alert alertSuccess">
+            <div style={{ fontWeight: 900 }}>Berhasil</div>
+            <div className="alertText">{message}</div>
+          </div>
+        ) : null}
 
         <div style={{ height: 12 }} />
 
@@ -1221,7 +1231,12 @@ function FilesPageContent() {
 
           <div style={{ height: 12 }} />
 
-          {loading ? <div style={{ color: 'var(--muted)' }}>Loading…</div> : null}
+          {loading ? (
+            <div className="alert alertInfo">
+              <div style={{ fontWeight: 900 }}>Memuat…</div>
+              <div className="alertText">Sedang mengambil daftar arsip.</div>
+            </div>
+          ) : null}
 
           {/* Desktop View: Table */}
           <div className="tableWrap hide-mobile">
@@ -1236,57 +1251,77 @@ function FilesPageContent() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((it) => (
-                  <tr key={it._id} onClick={() => openDetail(it)} style={{ cursor: 'pointer' }}>
-                    <td>
-                      <div className="fileCellTitle" title={it.title || '-'}>
-                        Judul: {it.title?.trim() ? it.title : '-'}
-                      </div>
-                      <div className="fileCellMeta" title={it.originalName}>
-                        File: {it.originalName}
-                      </div>
-                      {q.trim() && it.searchSnippet ? (
-                        <div className="fileCellMeta" style={{ whiteSpace: 'normal', lineHeight: 1.35 }} title={it.searchSnippet}>
-                          OCR: {renderSnippet(it.searchSnippet, q)}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td style={{ color: '#9ca3af', whiteSpace: 'nowrap' }}>
-                      {(it as any).archiveNumber || '-'}
-                    </td>
-                    <td>
-                      <span className={ocrBadgeClass(it.ocrStatus)}>
-                        <span className="badgeDot" />
-                        {it.ocrStatus || '-'}
-                      </span>
-                    </td>
-                    <td style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>{new Date(it.createdAt).toLocaleString()}</td>
-                    <td>
-                      <div className="menuWrap" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          className="btn btnSecondary"
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                            const nextId = openMenu?.id === it._id ? null : it._id;
-                            if (nextId) setOpenMenu({ id: it._id, x: Math.round(rect.left), y: Math.round(rect.bottom + 8) });
-                            else setOpenMenu(null);
-                          }}
-                        >
-                          ⋯
-                        </button>
-                      </div>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} style={{ color: 'var(--muted)' }}>
+                      Loading…
                     </td>
                   </tr>
-                ))}
+                ) : items.length ? (
+                  items.map((it) => (
+                    <tr key={it._id} onClick={() => openDetail(it)} style={{ cursor: 'pointer' }}>
+                      <td>
+                        <div className="fileCellTitle" title={it.title || '-'}>
+                          Judul: {it.title?.trim() ? it.title : '-'}
+                        </div>
+                        <div className="fileCellMeta" title={it.originalName}>
+                          File: {it.originalName}
+                        </div>
+                        {q.trim() && it.searchSnippet ? (
+                          <div className="fileCellMeta" style={{ whiteSpace: 'normal', lineHeight: 1.35 }} title={it.searchSnippet}>
+                            OCR: {renderSnippet(it.searchSnippet, q)}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                        {(it as any).archiveNumber || '-'}
+                      </td>
+                      <td>
+                        <span className={ocrBadgeClass(it.ocrStatus)}>
+                          <span className="badgeDot" />
+                          {it.ocrStatus || '-'}
+                        </span>
+                      </td>
+                      <td style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>{new Date(it.createdAt).toLocaleString()}</td>
+                      <td>
+                        <div className="menuWrap" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="btn btnSecondary"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                              const nextId = openMenu?.id === it._id ? null : it._id;
+                              if (nextId) setOpenMenu({ id: it._id, x: Math.round(rect.left), y: Math.round(rect.bottom + 8) });
+                              else setOpenMenu(null);
+                            }}
+                          >
+                            ⋯
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} style={{ color: 'var(--muted)' }}>
+                      Tidak ada data arsip. Coba ubah filter atau klik Refresh.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
           {/* Mobile View: Accordion */}
           <div className="fileList hide-desktop">
-            {items.map((it) => {
+            {!loading && !items.length ? (
+              <div className="alert">
+                <div style={{ fontWeight: 900 }}>Tidak ada data</div>
+                <div className="alertText">Coba ubah filter atau klik Refresh.</div>
+              </div>
+            ) : null}
+            {(loading ? [] : items).map((it) => {
               const isExpanded = expandedId === it._id;
               const canEdit = canManageItem(it, me);
               const visibility = itemVisibility(it);

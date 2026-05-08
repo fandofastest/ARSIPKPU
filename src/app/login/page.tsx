@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function LoginPage() {
   const [nip, setNip] = useState('');
@@ -10,6 +10,16 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit = useMemo(() => nip.trim().length > 0 && password.length > 0, [nip, password]);
+
+  useEffect(() => {
+    const saved = (typeof window !== 'undefined' ? window.localStorage.getItem('theme') : null) as
+      | 'light'
+      | 'dark'
+      | null;
+    const prefersDark = typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+    const initial: 'light' | 'dark' = saved ?? (prefersDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', initial);
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,7 +48,7 @@ export default function LoginPage() {
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes loginSpin { 100% { transform: rotate(360deg); } }
         * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; background: #f0f4f8; }
+        html, body { margin: 0; padding: 0; font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
         
         .login-wrapper {
           min-height: 100vh;
@@ -52,20 +62,20 @@ export default function LoginPage() {
           position: absolute;
           top: -20%; left: -10%;
           width: 60%; height: 60%;
-          background: radial-gradient(circle, rgba(220, 38, 38, 0.05) 0%, transparent 70%);
+          background: radial-gradient(circle, color-mix(in srgb, var(--primary) 10%, transparent) 0%, transparent 70%);
           z-index: 0;
         }
         .login-bg-shape-2 {
           position: absolute;
           bottom: -20%; right: -10%;
           width: 50%; height: 50%;
-          background: radial-gradient(circle, rgba(220, 38, 38, 0.05) 0%, transparent 70%);
+          background: radial-gradient(circle, color-mix(in srgb, var(--primary) 10%, transparent) 0%, transparent 70%);
           z-index: 0;
         }
         .login-dot-grid {
           position: absolute;
           top: 0; left: 0; width: 100%; height: 100%;
-          background-image: radial-gradient(rgba(0,0,0,0.03) 1px, transparent 1px);
+          background-image: radial-gradient(color-mix(in srgb, var(--text) 7%, transparent) 1px, transparent 1px);
           background-size: 24px 24px;
           z-index: 0;
         }
@@ -100,9 +110,10 @@ export default function LoginPage() {
         }
 
         .login-card {
-          background: #ffffff;
+          background: var(--panel);
+          border: 1px solid var(--border);
           border-radius: 20px;
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+          box-shadow: var(--shadow);
           padding: 48px 40px;
           position: relative;
         }
@@ -110,20 +121,20 @@ export default function LoginPage() {
         .input-group {
           display: flex;
           align-items: center;
-          border: 1px solid #e2e8f0;
+          border: 1px solid var(--inputBorder);
           border-radius: 8px;
-          background: #ffffff;
+          background: var(--inputBg);
           transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .input-group:focus-within {
-          border-color: #dc2626;
-          box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+          border-color: transparent;
+          box-shadow: var(--ring);
         }
 
         .input-icon {
           padding: 0 12px;
-          color: #a0aec0;
+          color: color-mix(in srgb, var(--muted) 90%, transparent);
           display: flex;
         }
 
@@ -133,18 +144,18 @@ export default function LoginPage() {
           padding: 14px 0;
           outline: none;
           font-size: 0.95rem;
-          color: #2d3748;
+          color: var(--text);
           background: transparent;
         }
         
         .input-field::placeholder {
-          color: #a0aec0;
+          color: color-mix(in srgb, var(--muted) 85%, transparent);
         }
 
         .btn-primary {
           width: 100%;
-          background: #dc2626;
-          color: #ffffff;
+          background: var(--primary);
+          color: var(--primaryText);
           border: none;
           padding: 14px;
           border-radius: 8px;
@@ -159,7 +170,7 @@ export default function LoginPage() {
         }
 
         .btn-primary:hover:not(:disabled) {
-          background: #b91c1c;
+          filter: brightness(0.96);
         }
 
         .btn-primary:disabled {
@@ -169,9 +180,9 @@ export default function LoginPage() {
 
         .btn-sso {
           width: 100%;
-          background: #ffffff;
-          border: 1px solid #e2e8f0;
-          color: #4a5568;
+          background: var(--panel);
+          border: 1px solid var(--border);
+          color: var(--text);
           padding: 12px;
           border-radius: 8px;
           font-weight: 600;
@@ -185,7 +196,7 @@ export default function LoginPage() {
         }
 
         .btn-sso:hover {
-          background: #f7fafc;
+          background: color-mix(in srgb, var(--secondary) 75%, transparent);
         }
 
         .login-footer {
@@ -193,7 +204,7 @@ export default function LoginPage() {
           bottom: 24px;
           width: 100%;
           text-align: center;
-          color: #a0aec0;
+          color: var(--muted);
           font-size: 0.85rem;
           z-index: 10;
         }
@@ -237,10 +248,10 @@ export default function LoginPage() {
         <header className="login-header">
           <img src="/logo.png" alt="Logo KPU" style={{ width: 48, height: 'auto' }} />
           <div>
-            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1a202c', letterSpacing: '-0.01em' }}>
+            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text)', letterSpacing: '-0.01em' }}>
               KOMISI PEMILIHAN UMUM
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#718096' }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
               Kota Dumai
             </div>
           </div>
@@ -250,13 +261,13 @@ export default function LoginPage() {
         <div className="login-main">
           {/* Left Text */}
           <div className="login-left">
-            <h1 style={{ fontSize: 'clamp(2.5rem, 4vw, 3.5rem)', fontWeight: 800, color: '#1a202c', margin: '0 0 4px', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: 'clamp(2.5rem, 4vw, 3.5rem)', fontWeight: 800, color: 'var(--text)', margin: '0 0 4px', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
               Sistem Arsip Digital
             </h1>
-            <h1 style={{ fontSize: 'clamp(3rem, 5vw, 4.5rem)', fontWeight: 900, color: '#dc2626', margin: '0 0 24px', lineHeight: 1, letterSpacing: '-0.02em' }}>
+            <h1 style={{ fontSize: 'clamp(3rem, 5vw, 4.5rem)', fontWeight: 900, color: 'var(--primary)', margin: '0 0 24px', lineHeight: 1, letterSpacing: '-0.02em' }}>
               KPU
             </h1>
-            <p style={{ fontSize: '1.1rem', color: '#4a5568', margin: 0, maxWidth: 400, lineHeight: 1.6 }}>
+            <p style={{ fontSize: '1.1rem', color: 'var(--muted)', margin: 0, maxWidth: 400, lineHeight: 1.6 }}>
               Kelola Arsip dan Dokumen Pemilu<br />
               Secara Aman dan Terintegrasi
             </p>
@@ -267,10 +278,10 @@ export default function LoginPage() {
             <div className="login-card">
               <div style={{ textAlign: 'center', marginBottom: 32 }}>
                 <img src="/logo.png" alt="Logo KPU" style={{ width: 72, height: 'auto', marginBottom: 16 }} />
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1a202c', margin: '0 0 8px' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', margin: '0 0 8px' }}>
                   Selamat Datang
                 </h2>
-                <p style={{ color: '#718096', margin: 0, fontSize: '0.95rem' }}>
+                <p style={{ color: 'var(--muted)', margin: 0, fontSize: '0.95rem' }}>
                   Silakan masuk untuk melanjutkan
                 </p>
               </div>
@@ -279,7 +290,7 @@ export default function LoginPage() {
                 
                 {/* Error Alert */}
                 {error && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#c53030', background: '#fff5f5', border: '1px solid #feb2b2', borderRadius: 8, padding: '12px', fontSize: '0.9rem', fontWeight: 600 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--danger)', background: 'color-mix(in srgb, var(--danger) 10%, var(--panel))', border: '1px solid color-mix(in srgb, var(--danger) 35%, var(--border))', borderRadius: 8, padding: '12px', fontSize: '0.9rem', fontWeight: 600 }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                     {error}
                   </div>
@@ -323,8 +334,8 @@ export default function LoginPage() {
 
                 {/* Additional Options */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', marginTop: 4, marginBottom: 8 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: '#4a5568' }}>
-                    <input type="checkbox" style={{ accentColor: '#dc2626', width: 16, height: 16, cursor: 'pointer' }} />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--muted)' }}>
+                    <input type="checkbox" style={{ accentColor: 'var(--primary)', width: 16, height: 16, cursor: 'pointer' }} />
                     Ingat Saya
                   </label>
                 </div>

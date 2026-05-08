@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { FeedbackWidget } from './FeedbackWidget';
 
@@ -205,6 +205,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<{ name: string; phone: string; role: string } | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [topQuery, setTopQuery] = useState('');
+  const topQueryRef = useRef<HTMLInputElement | null>(null);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   useEffect(() => {
     const saved = (typeof window !== 'undefined' ? window.localStorage.getItem('theme') : null) as
@@ -242,6 +245,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       });
   }, [pathname, router]);
 
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setAccountMenuOpen(false);
+      }
+    }
+
+    function onPointerDown(e: PointerEvent) {
+      const el = accountMenuRef.current;
+      if (!el) return;
+      if (!el.contains(e.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown, true);
+    };
+  }, [accountMenuOpen]);
+
 
   function toggleTheme() {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -268,9 +296,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       window.location.href = '/login';
     }
   }
-
-
-
 
   function submitTopSearch() {
     const q = topQuery.trim();
@@ -316,6 +341,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="topbar">
           <div className="searchWrap">
             <input
+              ref={topQueryRef}
               className="input"
               value={topQuery}
               onChange={(e) => setTopQuery(e.target.value)}
@@ -327,13 +353,65 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="topbarRight">
-            <button className="btn btnSecondary" type="button" onClick={toggleTheme}>
-              {theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+            {topQuery.trim() ? (
+              <button
+                className="btn btnSecondary"
+                type="button"
+                onClick={() => {
+                  setTopQuery('');
+                  topQueryRef.current?.focus();
+                }}
+              >
+                Clear
+              </button>
+            ) : null}
+            <button className="btn" type="button" onClick={submitTopSearch} disabled={!topQuery.trim()}>
+              Cari
             </button>
-            <div style={{ color: 'var(--muted)' }}>{me ? `Halo, ${me.name}` : ''}</div>
-            <button className="btn btnSecondary" type="button" onClick={logout}>
-              Keluar
-            </button>
+
+            <div className="menuWrap" ref={accountMenuRef}>
+              <button
+                className="btn btnSecondary"
+                type="button"
+                onClick={() => setAccountMenuOpen((v) => !v)}
+              >
+                {me ? me.name : 'Akun'}
+              </button>
+              {accountMenuOpen ? (
+                <div className="menu">
+                  <button
+                    className="menuItem"
+                    type="button"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      router.push('/settings/profile');
+                    }}
+                  >
+                    Profil
+                  </button>
+                  <button
+                    className="menuItem"
+                    type="button"
+                    onClick={() => {
+                      toggleTheme();
+                      setAccountMenuOpen(false);
+                    }}
+                  >
+                    {theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+                  </button>
+                  <button
+                    className="menuItem"
+                    type="button"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      void logout();
+                    }}
+                  >
+                    Keluar
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         </header>
 

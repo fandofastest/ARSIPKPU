@@ -160,6 +160,9 @@ textarea {
   transition: transform 0.08s ease, filter 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
+.btnPrimary {
+}
+
 .btn:hover {
   filter: brightness(1.04);
 }
@@ -186,6 +189,36 @@ textarea {
 
 .btnSecondary:hover {
   filter: brightness(1.03);
+}
+
+.alert {
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel2) 92%, transparent);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.alertText {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.alertError {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+}
+
+.alertSuccess {
+  border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+  background: color-mix(in srgb, var(--success) 10%, var(--panel));
+}
+
+.alertInfo {
+  border-color: color-mix(in srgb, var(--info) 35%, var(--border));
+  background: color-mix(in srgb, var(--info) 10%, var(--panel));
 }
 
 .input {
@@ -728,6 +761,11 @@ textarea {
   color: var(--text);
   cursor: pointer;
   font-weight: 600;
+}
+
+.menuItem:focus {
+  outline: none;
+  box-shadow: var(--ring);
 }
 
 .menuItem:hover {
