@@ -9,7 +9,7 @@ type MeResp =
 
 type FeedbackItem = {
   _id: string;
-  category: 'kritik' | 'saran' | 'bug' | 'fitur' | 'lainnya';
+  category: 'kritik' | 'saran' | 'bug' | 'fitur' | 'lainnya' | 'kuisioner';
   subject: string;
   message: string;
   rating?: number | null;
@@ -145,8 +145,8 @@ export default function FeedbackPage() {
                         fontSize: 11, 
                         padding: '2px 8px', 
                         borderRadius: 4, 
-                        background: it.category === 'bug' ? 'var(--danger-light)' : 'var(--primary-light)',
-                        color: it.category === 'bug' ? 'var(--danger)' : 'var(--primary)',
+                        background: it.category === 'bug' ? 'var(--danger-light)' : it.category === 'kuisioner' ? 'color-mix(in srgb, var(--info) 14%, var(--panel))' : 'var(--primary-light)',
+                        color: it.category === 'bug' ? 'var(--danger)' : it.category === 'kuisioner' ? 'var(--info)' : 'var(--primary)',
                         textTransform: 'uppercase',
                         fontWeight: 700
                       }}>

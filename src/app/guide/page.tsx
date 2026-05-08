@@ -2,8 +2,49 @@
 'use client';
 
 import { AppShell } from '@/components/AppShell';
+import { useState } from 'react';
 
 export default function GuidePage() {
+  const [q1, setQ1] = useState<string>('5');
+  const [q2, setQ2] = useState<string>('');
+  const [q3, setQ3] = useState<string>('');
+  const [q4, setQ4] = useState<string>('');
+  const [q5, setQ5] = useState<string>('');
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const message = `
+1. Kejelasan Panduan: ${q1}
+2. Memahami Alur Arsip: ${q2 === 'paham' ? 'Sudah Paham' : 'Kurang Paham'}
+3. Fitur Pencarian Membantu: ${q3 === 'ya' ? 'Ya' : 'Tidak'}
+4. Bagian Paling Sulit: ${q4 || '-'}
+5. Kritik/Saran: ${q5 || '-'}
+    `.trim();
+
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: 'kuisioner',
+          subject: 'Evaluasi Pemahaman Pengguna',
+          message,
+          rating: Number(q1)
+        })
+      });
+
+      if (res.ok) {
+        setIsSubmitted(true);
+      } else {
+        alert('Gagal mengirim kuisioner. Silakan coba lagi.');
+      }
+    } catch (err) {
+      alert('Terjadi kesalahan teknis saat mengirim data.');
+    }
+  };
+
   return (
     <AppShell>
       <div className="container" style={{ maxWidth: '900px' }}>
@@ -51,6 +92,7 @@ export default function GuidePage() {
               <li><a href="#bab-4" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>4. Pengaturan Sistem (Menu Khusus Administrator)</strong></a></li>
               <li><a href="#bab-5" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>5. Fitur Bantuan dan Pelaporan Bug (Feedback)</strong></a></li>
               <li><a href="#bab-6" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>6. Log Aktivitas (Audit Trail)</strong></a></li>
+              <li><a href="#bab-7" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>7. Kuisioner Pemahaman</strong></a></li>
               <li><a href="#penutup" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>Penutup</strong></a></li>
             </ul>
           </section>
@@ -212,6 +254,102 @@ export default function GuidePage() {
                 <li>Ini berguna untuk forensik dan memastikan integritas data dalam sistem arsip tetap terjaga.</li>
               </ol>
             </div>
+          </section>
+
+          <section id="bab-7" className="print-page-break" style={{ marginBottom: '40px' }}>
+            <h3 style={{ color: 'var(--primary)', borderBottom: '2px solid var(--border)', paddingBottom: '8px' }}>7. Kuisioner Pemahaman</h3>
+            <p>Mohon bantu kami untuk mengevaluasi efektivitas panduan ini dengan mengisi kuisioner singkat di bawah ini:</p>
+            
+            {!isSubmitted ? (
+              <form onSubmit={handleSubmit} style={{ 
+                background: 'var(--bg2)', 
+                padding: '24px', 
+                borderRadius: '12px', 
+                marginTop: '20px',
+                border: '1px solid var(--border)'
+              }}>
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>1. Seberapa jelas panduan penggunaan yang diberikan? (1-5)</label>
+                  <input 
+                    type="range" min="1" max="5" value={q1} 
+                    onChange={(e) => setQ1(e.target.value)} 
+                    style={{ width: '100%' }}
+                  />
+                  <div style={{ textAlign: 'center', fontWeight: 'bold' }}>{q1} - {q1 === '5' ? 'Sangat Jelas' : q1 === '1' ? 'Sangat Tidak Jelas' : 'Cukup Jelas'}</div>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>2. Apakah Anda sudah memahami alur pengelolaan arsip?</label>
+                  <div style={{ display: 'flex', gap: '16px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input type="radio" name="q2" value="paham" onChange={(e) => setQ2(e.target.value)} required /> Sudah Paham
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input type="radio" name="q2" value="kurang" onChange={(e) => setQ2(e.target.value)} /> Kurang Paham
+                    </label>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>3. Apakah Anda merasa fitur pencarian sudah cukup membantu?</label>
+                  <div style={{ display: 'flex', gap: '16px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input type="radio" name="q3" value="ya" onChange={(e) => setQ3(e.target.value)} required /> Ya
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input type="radio" name="q3" value="tidak" onChange={(e) => setQ3(e.target.value)} /> Tidak
+                    </label>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>4. Bagian mana yang menurut Anda paling sulit digunakan?</label>
+                  <input 
+                    className="input" 
+                    value={q4} 
+                    onChange={(e) => setQ4(e.target.value)} 
+                    placeholder="Contoh: Menu klasifikasi atau filter tahun"
+                  />
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>5. Kritik dan Saran untuk aplikasi ini ke depannya?</label>
+                  <textarea 
+                    className="input" 
+                    rows={3} 
+                    value={q5} 
+                    onChange={(e) => setQ5(e.target.value)} 
+                    placeholder="Tuliskan saran Anda di sini..."
+                  />
+                </div>
+
+                <button type="submit" className="btn btnPrimary" style={{ width: '100%', padding: '12px' }}>
+                  Kirim Kuisioner
+                </button>
+              </form>
+            ) : (
+              <div style={{ 
+                background: 'var(--success)', 
+                color: 'white', 
+                padding: '30px', 
+                borderRadius: '12px', 
+                textAlign: 'center',
+                marginTop: '20px'
+              }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{ marginBottom: '16px' }}>
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <h4 style={{ margin: 0, fontSize: '20px' }}>Terima Kasih!</h4>
+                <p>Jawaban Anda telah kami terima dan akan menjadi bahan evaluasi kami.</p>
+                <button 
+                  className="btn" 
+                  onClick={() => setIsSubmitted(false)}
+                  style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid white', marginTop: '16px' }}
+                >
+                  Isi Kembali
+                </button>
+              </div>
+            )}
           </section>
 
           <section id="penutup" className="print-page-break" style={{ marginBottom: '40px' }}>
