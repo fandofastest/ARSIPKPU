@@ -23,59 +23,218 @@ export default function GuidePage() {
         </div>
 
         <div className="card" id="printable-guide" style={{ padding: '40px', lineHeight: '1.6' }}>
-          <div style={{ textAlign: 'center', borderBottom: '2px solid var(--border)', paddingBottom: '20px', marginBottom: '30px' }}>
+          <div style={{ textAlign: 'center', borderBottom: '2px solid var(--border)', paddingBottom: '20px', marginBottom: '40px' }}>
             <img src="/logo.png" alt="Logo KPU" style={{ width: '80px', marginBottom: '16px' }} />
-            <h1 style={{ margin: 0, fontSize: '24px' }}>PANDUAN PENGGUNAAN KPU SMART ARCHIVE</h1>
-            <h2 style={{ margin: 0, fontSize: '18px' }}>Sistem arsip pintar dengan pencarian cepat dan klasifikasi otomatis.</h2>
+            <h1 style={{ margin: 0, fontSize: '26px' }}>BUKU PANDUAN PENGGUNAAN APLIKASI (USER MANUAL)</h1>
+            <h2 style={{ margin: 0, fontSize: '20px', color: 'var(--primary)' }}>KPU SMART ARCHIVE</h2>
+            <p style={{ marginTop: '10px', color: 'var(--muted)' }}>Dokumen Petunjuk Teknis Lengkap - Langkah demi Langkah</p>
           </div>
 
-          <section style={{ marginBottom: '30px' }}>
-            <h3 style={{ color: 'var(--primary)', borderLeft: '4px solid var(--primary)', paddingLeft: '12px' }}>1. Pendahuluan</h3>
-            <p>
-              KPU Smart Archive dirancang untuk mendigitalisasi, mengorganisir, dan mengamankan seluruh dokumen dengan standar klasifikasi yang ketat. Sistem ini mendukung pengelolaan arsip dinamis dan statis dengan kebijakan retensi otomatis.
-            </p>
+          <section id="kata-pengantar" style={{ marginBottom: '40px' }}>
+            <h3 style={{ color: 'var(--primary)', borderBottom: '2px solid var(--border)', paddingBottom: '8px' }}>Kata Pengantar</h3>
+            <p>Puji syukur ke hadirat Tuhan Yang Maha Esa atas berkat dan rahmat-Nya, penyusunan Buku Panduan Penggunaan Aplikasi (User Manual) KPU Smart Archive ini dapat diselesaikan dengan baik.</p>
+            <p>Aplikasi KPU Smart Archive dikembangkan sebagai solusi digitalisasi tata kelola kearsipan, yang dirancang khusus untuk memenuhi standar keamanan, kecepatan penemuan kembali informasi, dan efisiensi ruang penyimpanan. Buku panduan ini disusun sebagai acuan praktis bagi seluruh pengguna, baik staf pengelola arsip maupun administrator, agar dapat mengoperasikan setiap fitur aplikasi secara optimal dan sesuai dengan prosedur yang berlaku.</p>
+            <p>Kami menyadari bahwa sistem dan panduan ini akan terus berkembang. Oleh karena itu, masukan dan saran yang membangun sangat kami harapkan. Akhir kata, semoga buku panduan ini bermanfaat dan dapat mendukung peningkatan kinerja kearsipan di lingkungan KPU.</p>
+            <br/>
+            <p style={{ textAlign: 'right' }}><strong>Tim Pengembang KPU Smart Archive</strong></p>
           </section>
 
-          <section style={{ marginBottom: '30px' }}>
-            <h3 style={{ color: 'var(--primary)', borderLeft: '4px solid var(--primary)', paddingLeft: '12px' }}>2. Alur Unggah Arsip</h3>
-            <p>Proses unggah dokumen dilakukan melalui langkah-langkah berikut:</p>
-            <ul style={{ paddingLeft: '20px' }}>
-              <li><strong>Klasifikasi:</strong> Pilih kategori utama dan subkategori yang sesuai.</li>
-              <li><strong>Metadata:</strong> Isi detail dokumen seperti judul, tahun, dan tingkat keamanan.</li>
-              <li><strong>Keamanan:</strong> Gunakan level <strong>RAHASIA</strong> untuk dokumen yang hanya boleh diakses oleh admin dan pemilik dokumen.</li>
-              <li><strong>Retensi:</strong> Untuk arsip Pemilu, sistem akan menetapkan masa simpan minimal 10 tahun secara otomatis.</li>
+          <section id="daftar-isi" style={{ marginBottom: '40px' }}>
+            <h3 style={{ color: 'var(--primary)', borderBottom: '2px solid var(--border)', paddingBottom: '8px' }}>Daftar Isi</h3>
+            <ul style={{ listStyleType: 'none', paddingLeft: 0, lineHeight: '2' }}>
+              <li><a href="#kata-pengantar" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>Kata Pengantar</strong></a></li>
+              <li><a href="#daftar-isi" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>Daftar Isi</strong></a></li>
+              <li><a href="#bab-1" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>1. Akses Sistem (Login &amp; Logout)</strong></a></li>
+              <li><a href="#bab-2" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>2. Mengenal Dashboard Utama</strong></a></li>
+              <li><a href="#bab-3" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>3. Manajemen Arsip (Menu Utama)</strong></a></li>
+              <li><a href="#bab-4" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>4. Pengaturan Sistem (Menu Khusus Administrator)</strong></a></li>
+              <li><a href="#bab-5" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>5. Fitur Bantuan dan Pelaporan Bug (Feedback)</strong></a></li>
+              <li><a href="#bab-6" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>6. Log Aktivitas (Audit Trail)</strong></a></li>
+              <li><a href="#penutup" style={{ textDecoration: 'none', color: 'var(--primary)' }}><strong>Penutup</strong></a></li>
             </ul>
           </section>
 
-          <section style={{ marginBottom: '30px' }}>
-            <h3 style={{ color: 'var(--primary)', borderLeft: '4px solid var(--primary)', paddingLeft: '12px' }}>3. Manajemen Feedback & Laporan Bug</h3>
-            <p>Pengguna dapat memberikan masukan melalui tombol melayang di pojok kanan bawah:</p>
-            <ul style={{ paddingLeft: '20px' }}>
-              <li><strong>Rating:</strong> Memberikan penilaian terhadap pengalaman penggunaan sistem.</li>
-              <li><strong>Lampiran:</strong> Unggah screenshot jika menemukan error atau bug pada sistem.</li>
-              <li><strong>Tindak Lanjut:</strong> Admin akan meninjau setiap laporan dan memperbarui statusnya hingga selesai.</li>
-            </ul>
+          <section id="bab-1" className="print-page-break" style={{ marginBottom: '40px' }}>
+            <h3 style={{ color: 'var(--primary)', borderBottom: '2px solid var(--border)', paddingBottom: '8px' }}>1. Akses Sistem (Login & Logout)</h3>
+            <p>Langkah-langkah untuk masuk dan keluar dari sistem secara aman:</p>
+            <div style={{ paddingLeft: '20px' }}>
+              <h4 style={{ marginBottom: '8px' }}>A. Cara Masuk (Login)</h4>
+              <img src="/panduan/login.png" alt="Tampilan Login" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
+              <ol>
+                <li>Buka browser web (disarankan menggunakan Google Chrome atau Mozilla Firefox).</li>
+                <li>Ketik alamat URL aplikasi KPU Smart Archive pada bilah alamat (address bar).</li>
+                <li>Pada halaman Login, masukkan <strong>Username</strong> Anda di kolom pertama.</li>
+                <li>Masukkan <strong>Password</strong> Anda di kolom kedua dengan benar (perhatikan huruf besar/kecil).</li>
+                <li>Klik tombol <strong>"Login"</strong> atau <strong>"Masuk"</strong>.</li>
+                <li>Jika berhasil, Anda akan otomatis diarahkan ke halaman Dashboard utama. Jika gagal, periksa kembali penulisan username dan password Anda.</li>
+              </ol>
+              
+              <h4 style={{ marginBottom: '8px' }}>B. Cara Keluar (Logout)</h4>
+              <ol>
+                <li>Lihat ke sudut kanan atas layar aplikasi.</li>
+                <li>Klik pada nama atau ikon profil Anda.</li>
+                <li>Pilih opsi <strong>"Logout"</strong> atau <strong>"Keluar"</strong> dari menu yang muncul.</li>
+                <li>Anda akan dikembalikan ke halaman Login. Sangat disarankan untuk selalu melakukan Logout jika Anda menggunakan komputer publik atau berbagi komputer.</li>
+              </ol>
+            </div>
           </section>
 
-          <section style={{ marginBottom: '30px' }}>
-            <h3 style={{ color: 'var(--primary)', borderLeft: '4px solid var(--primary)', paddingLeft: '12px' }}>4. Fitur Keamanan</h3>
-            <ul style={{ paddingLeft: '20px' }}>
-              <li><strong>Audit Log:</strong> Setiap aktivitas akses dokumen dicatat untuk keperluan forensik data.</li>
-              <li><strong>Enkripsi:</strong> Dokumen disimpan dengan sistem penamaan yang unik untuk mencegah akses langsung yang tidak sah.</li>
-            </ul>
+          <section id="bab-2" className="print-page-break" style={{ marginBottom: '40px' }}>
+            <h3 style={{ color: 'var(--primary)', borderBottom: '2px solid var(--border)', paddingBottom: '8px' }}>2. Mengenal Dashboard Utama</h3>
+            <p>Setelah login, Dashboard adalah halaman pertama yang Anda lihat. Halaman ini berfungsi sebagai panel kendali informasi:</p>
+            <img src="/panduan/beranda.png" alt="Tampilan Beranda" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
+            <div style={{ paddingLeft: '20px' }}>
+              <ol>
+                <li><strong>Kartu Statistik (Widget):</strong> Di bagian atas, terdapat kartu-kartu yang menampilkan angka total dokumen yang ada di sistem, jumlah pengguna, dan aktivitas hari ini.</li>
+                <li><strong>Sidebar Navigasi (Menu Kiri):</strong> Menu utama untuk berpindah halaman. Terdiri dari Dashboard, Arsip, Pengaturan (khusus Admin), Panduan, dan Inbox.</li>
+                <li><strong>Aktivitas Terbaru:</strong> Tabel singkat di halaman dashboard yang memperlihatkan dokumen-dokumen yang baru saja diunggah ke sistem beserta tanggal dan pengunggahnya.</li>
+              </ol>
+            </div>
+          </section>
+
+          <section id="bab-3" className="print-page-break" style={{ marginBottom: '40px' }}>
+            <h3 style={{ color: 'var(--primary)', borderBottom: '2px solid var(--border)', paddingBottom: '8px' }}>3. Manajemen Arsip (Menu Utama)</h3>
+            <p>Ini adalah fitur paling penting. Klik menu <strong>"Arsip"</strong> di sidebar sebelah kiri untuk membuka halaman ini.</p>
+            
+            <div style={{ paddingLeft: '20px' }}>
+              <h4 style={{ marginBottom: '8px' }}>A. Cara Mencari Arsip</h4>
+              <img src="/panduan/arsip.png" alt="Tampilan Arsip" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
+              <ol>
+                <li>Pada bagian atas tabel Arsip, cari kotak teks berlabel <strong>"Cari dokumen..."</strong>.</li>
+                <li>Ketik nomor surat, judul dokumen, atau kata kunci yang Anda ingat.</li>
+                <li>Sistem akan secara otomatis menyaring tabel saat Anda mengetik, menampilkan hanya dokumen yang relevan.</li>
+                <li>Anda juga bisa menggunakan tombol <strong>Filter</strong> (jika tersedia) untuk menyaring dokumen khusus berdasarkan tahun tertentu atau klasifikasi tertentu saja.</li>
+              </ol>
+
+              <h4 style={{ marginBottom: '8px', marginTop: '24px' }}>B. Cara Menambahkan (Unggah) Arsip Baru</h4>
+              <img src="/panduan/upload.png" alt="Tampilan Upload" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
+              <ol>
+                <li>Di halaman Arsip, klik tombol berwarna biru <strong>"+ Tambah Arsip"</strong> di kanan atas tabel.</li>
+                <li>Sebuah form isian akan muncul (berupa pop-up atau halaman baru).</li>
+                <li>Isi <strong>Nomor Dokumen</strong> sesuai dengan nomor registrasi fisik surat.</li>
+                <li>Isi <strong>Judul Dokumen</strong> dengan jelas dan deskriptif.</li>
+                <li>Pilih <strong>Tanggal Dokumen</strong> dengan mengklik kolom tanggal, kalender kecil akan muncul untuk Anda pilih.</li>
+                <li>Pada bagian <strong>Klasifikasi</strong>, pilih <em>Kategori Induk</em> terlebih dahulu (misal: HK - Hukum), kemudian pilih <em>Sub-Klasifikasi</em> spesifiknya (misal: HK.01 - Peraturan).</li>
+                <li>Pada opsi <strong>Tingkat Keamanan</strong>, pilih <em>"Biasa"</em> jika dokumen boleh dilihat siapa saja, atau <em>"Rahasia"</em> jika dokumen bersifat tertutup (hanya Anda dan Admin yang bisa melihatnya nanti).</li>
+                <li>Tambahkan <strong>Uraian Singkat / Deskripsi</strong> (opsional namun disarankan) untuk memudahkan pencarian di kemudian hari.</li>
+                <li>Pada bagian file, klik kotak area unggah atau tombol <strong>"Pilih File"</strong>. Cari file PDF dokumen di komputer Anda (Pastikan ukuran file tidak melebihi 10MB).</li>
+                <li>Setelah semua terisi dan file PDF sudah dipilih, klik tombol <strong>"Simpan"</strong>.</li>
+                <li>Tunggu hingga progres unggahan selesai dan muncul notifikasi "Berhasil". Arsip kini telah masuk ke tabel.</li>
+              </ol>
+
+              <h4 style={{ marginBottom: '8px', marginTop: '24px' }}>C. Cara Melihat, Mengunduh, Mengubah, dan Menghapus Arsip</h4>
+              <p>Pada setiap baris dokumen di tabel Arsip, perhatikan kolom "Aksi" (Action) di sebelah paling kanan:</p>
+              <img src="/panduan/detail%20dokumen.png" alt="Tampilan Detail Dokumen" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
+              <ol>
+                <li><strong>Melihat Detail (Ikon Mata):</strong> Klik ikon ini untuk membuka layar pratinjau (preview) PDF langsung di browser Anda tanpa harus mengunduhnya, beserta seluruh metadata dokumen.</li>
+                <li><strong>Mengunduh File (Ikon Panah Bawah/Download):</strong> Klik ikon ini jika Anda ingin menyimpan file PDF tersebut ke dalam folder komputer lokal Anda.</li>
+                <li><strong>Mengedit Data (Ikon Pensil):</strong> Jika ada kesalahan ketik saat mengunggah, klik ikon ini. Form pengisian akan muncul kembali, Anda bisa memperbaiki judul, nomor, atau mengganti file, lalu klik "Simpan Perubahan".</li>
+                <li><strong>Menghapus (Ikon Tempat Sampah):</strong> Klik ikon ini untuk menghapus data. Sistem akan meminta konfirmasi ("Apakah Anda yakin?"). Jika ya, klik OK. <em>Catatan: Fitur hapus biasanya hanya terbuka untuk pengguna level Admin.</em></li>
+              </ol>
+
+              <h4 style={{ marginBottom: '8px', marginTop: '24px' }}>D. Mengembalikan Arsip yang Terhapus (Tong Sampah)</h4>
+              <p>Arsip yang dihapus tidak langsung hilang, melainkan masuk ke Tong Sampah (Trash).</p>
+              <img src="/panduan/trash.png" alt="Tampilan Tong Sampah" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
+              <ol>
+                <li>Buka menu <strong>"Tong Sampah"</strong> di navigasi kiri (Jika Anda adalah Admin).</li>
+                <li>Pilih dokumen yang ingin dikembalikan, lalu klik tombol <strong>"Restore / Kembalikan"</strong>.</li>
+                <li>Dokumen akan kembali muncul di tabel Arsip utama. Jika Anda mengklik <strong>"Hapus Permanen"</strong>, barulah dokumen terhapus selamanya.</li>
+              </ol>
+            </div>
+          </section>
+
+          <section id="bab-4" className="print-page-break" style={{ marginBottom: '40px' }}>
+            <h3 style={{ color: 'var(--primary)', borderBottom: '2px solid var(--border)', paddingBottom: '8px' }}>4. Pengaturan Sistem (Menu Khusus Administrator)</h3>
+            <p>Menu "Pengaturan" di sidebar hanya muncul jika Anda login sebagai akun dengan peran <strong>Admin</strong>.</p>
+            <img src="/panduan/pengaturan.png" alt="Tampilan Pengaturan" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
+            
+            <div style={{ paddingLeft: '20px' }}>
+              <h4 style={{ marginBottom: '8px' }}>A. Manajemen Pengguna</h4>
+              <p>Berfungsi untuk menambah staf yang berhak mengakses sistem.</p>
+              <img src="/panduan/user.png" alt="Tampilan Manajemen Pengguna" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
+              <ol>
+                <li>Pilih <strong>Pengaturan &gt; Manajemen Pengguna</strong>.</li>
+                <li>Untuk menambah akun, klik <strong>"+ Tambah Pengguna"</strong>.</li>
+                <li>Isi Nama Lengkap, Username (yang akan dipakai login), dan Password (kata sandi awal).</li>
+                <li>Pilih <strong>Role</strong>:
+                  <ul>
+                    <li><strong>Admin:</strong> Memiliki akses penuh termasuk menghapus data dan melihat semua dokumen rahasia.</li>
+                    <li><strong>User:</strong> Hanya bisa mengunggah dokumen, melihat dokumen biasa, dan melihat dokumen rahasia miliknya sendiri.</li>
+                  </ul>
+                </li>
+                <li>Klik "Simpan". Jika ada pegawai yang mutasi/keluar, Admin dapat menggunakan ikon tempat sampah di sebelahnya untuk menghapus akun tersebut agar tidak bisa login lagi.</li>
+              </ol>
+
+              <h4 style={{ marginBottom: '8px', marginTop: '24px' }}>B. Manajemen Klasifikasi</h4>
+              <p>Berfungsi untuk mengatur daftar kategori surat/arsip di instansi.</p>
+              <img src="/panduan/kategori.png" alt="Tampilan Manajemen Klasifikasi" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
+              <ol>
+                <li>Pilih <strong>Pengaturan &gt; Klasifikasi</strong>.</li>
+                <li>Tabel akan menampilkan daftar klasifikasi induk (Misal: KU - Keuangan).</li>
+                <li>Untuk menambah kategori baru, klik <strong>"+ Tambah Induk"</strong>. Masukkan kode dan nama.</li>
+                <li>Untuk menambah rincian dari kategori induk, klik tombol <strong>"+ Tambah Sub-Klasifikasi"</strong> pada baris kategori induk tersebut. Masukkan kode sub (Misal: KU.01) dan keterangannya.</li>
+                <li>Klasifikasi yang dibuat di sini akan muncul otomatis di pilihan dropdown (pilihan menu) saat pengguna biasa mengunggah arsip.</li>
+              </ol>
+            </div>
+          </section>
+
+          <section id="bab-5" className="print-page-break" style={{ marginBottom: '40px' }}>
+            <h3 style={{ color: 'var(--primary)', borderBottom: '2px solid var(--border)', paddingBottom: '8px' }}>5. Fitur Bantuan dan Pelaporan Bug (Feedback)</h3>
+            <p>Jika pengguna mengalami kesulitan atau sistem tidak berjalan semestinya (error/bug), gunakan fitur ini:</p>
+            <div style={{ paddingLeft: '20px' }}>
+              <h4 style={{ marginBottom: '8px' }}>A. Cara Mengirim Laporan (Sebagai Pengguna Biasa/Admin)</h4>
+              <img src="/panduan/support.png" alt="Tampilan Support" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
+              <ol>
+                <li>Cari tombol melayang (widget) berlogo percakapan / tanda tanya di <strong>pojok kanan bawah</strong> layar Anda.</li>
+                <li>Klik ikon tersebut, sebuah kotak form umpan balik akan muncul ke atas.</li>
+                <li>Pilih <strong>Jenis Masalah:</strong> Apakah itu Bug (Kerusakan), Saran, atau Pertanyaan.</li>
+                <li>Di kolom <strong>Deskripsi</strong>, ceritakan secara jelas langkah-langkah yang Anda lakukan sebelum menemukan error tersebut. (Contoh: "Saat saya klik tombol simpan arsip HK.01, loading terus dan tidak tersimpan").</li>
+                <li><strong>Lampirkan Bukti (Opsional namun sangat disarankan):</strong> Klik area unggah gambar untuk melampirkan screenshot (tangkapan layar) komputer Anda yang memperlihatkan error tersebut.</li>
+                <li>Klik <strong>"Kirim Laporan"</strong>.</li>
+              </ol>
+
+              <h4 style={{ marginBottom: '8px', marginTop: '24px' }}>B. Mengelola Laporan Masuk (Khusus Administrator)</h4>
+              <img src="/panduan/evaluasi%20laporan.png" alt="Tampilan Evaluasi Laporan" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
+              <ol>
+                <li>Sebagai Admin, klik menu <strong>"Inbox"</strong> atau "Laporan Masuk" di sidebar kiri.</li>
+                <li>Anda akan melihat daftar laporan yang dikirimkan oleh para pengguna.</li>
+                <li>Klik pada salah satu baris laporan untuk melihat detail keluhan dan gambar screenshot yang dilampirkan.</li>
+                <li>Jika masalah sedang diperbaiki oleh tim IT, ubah status laporan tersebut (melalui dropdown) dari "Baru" menjadi <strong>"Diproses"</strong>.</li>
+                <li>Jika masalah sudah tuntas, ubah statusnya menjadi <strong>"Selesai"</strong>. Pengguna pengirim secara konseptual mengetahui bahwa laporannya telah ditangani.</li>
+              </ol>
+            </div>
+          </section>
+
+          <section id="bab-6" className="print-page-break" style={{ marginBottom: '40px' }}>
+            <h3 style={{ color: 'var(--primary)', borderBottom: '2px solid var(--border)', paddingBottom: '8px' }}>6. Log Aktivitas (Audit Trail)</h3>
+            <p>Fitur keamanan ekstra untuk melacak setiap jejak rekam aktivitas yang terjadi dalam sistem.</p>
+            <img src="/panduan/audit%20trail.png" alt="Tampilan Audit Trail" style={{ width: '100%', maxWidth: '700px', margin: '16px 0', borderRadius: '8px', border: '1px solid var(--border)', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }} />
+            <div style={{ paddingLeft: '20px' }}>
+              <ol>
+                <li>Menu <strong>Audit Trail</strong> (jika diaktifkan) hanya dapat diakses oleh Administrator.</li>
+                <li>Berisi tabel rekam jejak kapan seseorang masuk (login), mengubah data, menghapus dokumen, atau keluar (logout).</li>
+                <li>Ini berguna untuk forensik dan memastikan integritas data dalam sistem arsip tetap terjaga.</li>
+              </ol>
+            </div>
+          </section>
+
+          <section id="penutup" className="print-page-break" style={{ marginBottom: '40px' }}>
+            <h3 style={{ color: 'var(--primary)', borderBottom: '2px solid var(--border)', paddingBottom: '8px' }}>Penutup</h3>
+            <p>Demikianlah Buku Panduan Penggunaan Aplikasi (User Manual) KPU Smart Archive ini disusun. Diharapkan panduan ini dapat memberikan arahan yang jelas, sehingga seluruh fitur yang ada dapat dimanfaatkan semaksimal mungkin untuk menciptakan tata kelola arsip yang modern, aman, dan dapat diandalkan.</p>
+            <p>Terima kasih atas partisipasi dan komitmen Anda dalam menjaga kearsipan yang tertib. Mari bersama-sama kita wujudkan digitalisasi yang bermakna dan berkelanjutan.</p>
           </section>
 
           <div
             style={{
-              marginTop: '50px',
+              marginTop: '60px',
               paddingTop: '20px',
-              borderTop: '1px solid var(--border)',
+              borderTop: '2px dashed var(--border)',
               fontSize: '12px',
               textAlign: 'center',
               color: 'var(--muted)'
             }}
           >
-            © 2026 KPU Smart Archive - Dokumen ini dihasilkan secara otomatis oleh KPU Smart Archive
+            © 2026 KPU Smart Archive - Dokumen panduan ini dikhususkan untuk lingkungan internal KPU. <br/>Dilarang menyebarluaskan panduan ini kepada pihak yang tidak berkepentingan tanpa izin Administrator.
           </div>
         </div>
       </div>
@@ -109,6 +268,19 @@ export default function GuidePage() {
           #printable-guide {
             background: #fff !important;
             color: #000 !important;
+          }
+          .print-page-break {
+            page-break-before: always;
+          }
+          section {
+            page-break-inside: auto;
+          }
+          h3, h4 {
+            page-break-after: avoid;
+          }
+          img {
+            page-break-inside: avoid;
+            max-width: 100% !important;
           }
         }
       `}</style>

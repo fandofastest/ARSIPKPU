@@ -95,7 +95,7 @@ export function FeedbackWidget() {
           right: '24px',
           width: '320px',
           maxHeight: '80vh',
-          backgroundColor: 'var(--surface)',
+          backgroundColor: 'var(--panel)',
           border: '1px solid var(--border)',
           borderRadius: '12px',
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
@@ -110,7 +110,7 @@ export function FeedbackWidget() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            backgroundColor: 'var(--surface-hover)'
+            backgroundColor: 'var(--panel2)'
           }}>
             <h3 style={{ margin: 0, fontSize: '1rem' }}>Kirim Masukan</h3>
             <button type="button" onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}>
