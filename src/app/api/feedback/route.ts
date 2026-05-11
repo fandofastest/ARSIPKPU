@@ -37,11 +37,21 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const page = Math.max(1, Number(searchParams.get('page') || '1'));
-    const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') || '20')));
+    const limit = Math.min(500, Math.max(1, Number(searchParams.get('limit') || '20')));
     const status = String(searchParams.get('status') || '').trim();
+    const category = String(searchParams.get('category') || '').trim();
 
     const filter: Record<string, unknown> = {};
     if (status) filter.status = status;
+    if (category) {
+      const parsedCategory = z
+        .enum(['kritik', 'saran', 'bug', 'fitur', 'lainnya', 'kuisioner'])
+        .safeParse(category);
+      if (!parsedCategory.success) {
+        return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
+      }
+      filter.category = parsedCategory.data;
+    }
 
     const [items, total] = await Promise.all([
       Feedback.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
