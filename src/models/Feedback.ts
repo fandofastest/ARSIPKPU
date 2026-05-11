@@ -2,7 +2,7 @@ import mongoose, { Schema, type InferSchemaType, type Model } from 'mongoose';
 
 const FeedbackSchema = new Schema(
   {
-    category: { type: String, required: true, enum: ['kritik', 'saran', 'bug', 'fitur', 'lainnya'], default: 'saran' },
+    category: { type: String, required: true, enum: ['kritik', 'saran', 'bug', 'fitur', 'lainnya', 'kuisioner'], default: 'saran' },
     subject: { type: String, required: true, trim: true, maxlength: 200 },
     message: { type: String, required: true, trim: true, maxlength: 4000 },
     rating: { type: Number, required: false, min: 1, max: 5, default: null },

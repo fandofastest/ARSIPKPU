@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { useSearchParams } from 'next/navigation';
@@ -142,6 +143,9 @@ function canManageItem(it: ArchiveItem, me: { userId: string; phone: string; rol
 
 function FilesPageContent() {
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const uploadTitleRef = useRef<HTMLInputElement | null>(null);
+  const editTitleRef = useRef<HTMLInputElement | null>(null);
+  const shareQueryInputRef = useRef<HTMLInputElement | null>(null);
   const searchParams = useSearchParams();
 
   function nowLocalDateTimeValue() {
@@ -161,6 +165,7 @@ function FilesPageContent() {
   const [fRootCategorySlug, setFRootCategorySlug] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
+  const [pageJump, setPageJump] = useState('1');
 
   const [items, setItems] = useState<ArchiveItem[]>([]);
   const [meta, setMeta] = useState<{ total: number; totalPages: number } | null>(null);
@@ -309,6 +314,96 @@ function FilesPageContent() {
   }, [toast]);
 
   useEffect(() => {
+    setPageJump(String(page));
+  }, [page]);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return;
+
+      if (categoryModalOpen && !creatingCategory) {
+        setCategoryModalOpen(false);
+        return;
+      }
+      if (shareOpen && !shareSaving) {
+        setShareOpen(false);
+        return;
+      }
+      if (unlinkConfirmOpen && !gdriveUnlinkBusyId) {
+        setUnlinkConfirmOpen(false);
+        setUnlinkConfirmItem(null);
+        return;
+      }
+      if (deleteOpen) {
+        setDeleteOpen(false);
+        return;
+      }
+      if (detailOpen) {
+        setDetailOpen(false);
+        return;
+      }
+      if (previewOpen) {
+        setPreviewOpen(false);
+        setPreviewUrl(null);
+        setPreviewMime(null);
+        return;
+      }
+      if (editOpen && !editSaving) {
+        setEditOpen(false);
+        setEditId(null);
+        return;
+      }
+      if (uploadOpen && !uploading) {
+        setUploadOpen(false);
+        return;
+      }
+      if (trashOpen) {
+        setTrashOpen(false);
+        return;
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [
+    categoryModalOpen,
+    creatingCategory,
+    deleteOpen,
+    detailOpen,
+    editOpen,
+    editSaving,
+    gdriveUnlinkBusyId,
+    previewOpen,
+    shareOpen,
+    shareSaving,
+    trashOpen,
+    unlinkConfirmOpen,
+    uploadOpen,
+    uploading
+  ]);
+
+  useEffect(() => {
+    if (!uploadOpen) return;
+    if (uploading) return;
+    const t = setTimeout(() => uploadTitleRef.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, [uploadOpen, uploading]);
+
+  useEffect(() => {
+    if (!editOpen) return;
+    if (editSaving) return;
+    const t = setTimeout(() => editTitleRef.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, [editOpen, editSaving]);
+
+  useEffect(() => {
+    if (!shareOpen) return;
+    if (shareSaving) return;
+    const t = setTimeout(() => shareQueryInputRef.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, [shareOpen, shareSaving]);
+
+  useEffect(() => {
     const urlQ = (searchParams.get('q') ?? '').trim();
     const urlCategory = (searchParams.get('category') ?? '').trim();
     const urlUploader = (searchParams.get('uploader') ?? '').trim();
@@ -342,6 +437,38 @@ function FilesPageContent() {
     setPage(1);
   }, [q, fDocNumber, fDocFrom, fDocTo, fDocKind, fCategory, limit]);
 
+  const activeFilters = useMemo(() => {
+    const chips: Array<{ key: string; text: string; clear: () => void }> = [];
+    if (q.trim()) chips.push({ key: 'q', text: `Cari: ${q.trim()}`, clear: () => setQ('') });
+    if (fDocNumber.trim())
+      chips.push({ key: 'docNumber', text: `Nomor surat: ${fDocNumber.trim()}`, clear: () => setFDocNumber('') });
+    if (fDocKind.trim()) chips.push({ key: 'docKind', text: `Jenis: ${fDocKind.trim()}`, clear: () => setFDocKind('') });
+    if (fCategory.trim()) chips.push({ key: 'category', text: `Kategori: ${fCategory.trim()}`, clear: () => setFCategory('') });
+    if (fDocFrom.trim() || fDocTo.trim()) {
+      const text = `Tanggal surat: ${fDocFrom.trim() || '…'} – ${fDocTo.trim() || '…'}`;
+      chips.push({
+        key: 'docDate',
+        text,
+        clear: () => {
+          setFDocFrom('');
+          setFDocTo('');
+        }
+      });
+    }
+    return chips;
+  }, [q, fDocNumber, fDocFrom, fDocTo, fDocKind, fCategory]);
+
+  function resetFilters() {
+    setQ('');
+    setFDocNumber('');
+    setFDocFrom('');
+    setFDocTo('');
+    setFDocKind('');
+    setFCategory('');
+    setFRootCategorySlug('');
+    setPage(1);
+  }
+
   function refresh() {
     setLoading(true);
     setError(null);
@@ -353,10 +480,10 @@ function FilesPageContent() {
           setMeta({ total: d.meta.total, totalPages: d.meta.totalPages });
         } else {
           setError(d.error);
-          setToast({ kind: 'error', title: 'Failed to load', text: d.error });
+          setToast({ kind: 'error', title: 'Gagal memuat data', text: d.error });
         }
       })
-      .catch(() => setError('Failed to load'))
+      .catch(() => setError('Gagal memuat data'))
       .finally(() => setLoading(false));
   }
 
@@ -398,8 +525,8 @@ function FilesPageContent() {
   async function createCategoryInline(name: string): Promise<{ ok: true; name: string } | { ok: false; error: string }> {
     const nm = String(name ?? '').trim();
     if (!nm) return { ok: false, error: 'Nama kategori kosong' };
-    if (!me || (me.role !== 'admin' && me.role !== 'staff')) return { ok: false, error: 'Forbidden' };
-    if (creatingCategory) return { ok: false, error: 'Creating…' };
+    if (!me || (me.role !== 'admin' && me.role !== 'staff')) return { ok: false, error: 'Tidak diizinkan' };
+    if (creatingCategory) return { ok: false, error: 'Sedang membuat…' };
 
     const exists = categories.some((c) => categoryLabel(c).trim().toLowerCase() === nm.toLowerCase());
     if (exists) {
@@ -416,8 +543,8 @@ function FilesPageContent() {
       });
       const json = (await res.json().catch(() => ({}))) as { success?: boolean; data?: CategoryItem; error?: string };
       if (!res.ok || !json.success || !json.data) {
-        const errMsg = json?.error || 'Failed to create category';
-        setToast({ kind: 'error', title: 'Create category failed', text: errMsg });
+        const errMsg = json?.error || 'Gagal membuat kategori';
+        setToast({ kind: 'error', title: 'Gagal membuat kategori', text: errMsg });
         return { ok: false, error: errMsg };
       }
 
@@ -427,11 +554,11 @@ function FilesPageContent() {
         return next.slice().sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b)));
       });
 
-      setToast({ kind: 'success', title: 'Category created', text: nm });
+      setToast({ kind: 'success', title: 'Kategori dibuat', text: nm });
       return { ok: true, name: categoryLabel(json.data) };
     } catch {
-      setToast({ kind: 'error', title: 'Create category failed', text: 'Network error' });
-      return { ok: false, error: 'Network error' };
+      setToast({ kind: 'error', title: 'Gagal membuat kategori', text: 'Gangguan jaringan' });
+      return { ok: false, error: 'Gangguan jaringan' };
     } finally {
       setCreatingCategory(false);
     }
@@ -449,7 +576,7 @@ function FilesPageContent() {
     if (!nm) return;
     const r = await createCategoryInline(nm);
     if (!r.ok) {
-      setToast({ kind: 'error', title: 'Create category failed', text: r.error });
+      setToast({ kind: 'error', title: 'Gagal membuat kategori', text: r.error });
       return;
     }
     if (categoryModalTarget === 'filter') setFCategory(r.name);
@@ -549,11 +676,11 @@ function FilesPageContent() {
           setTrashItems(d.data);
           setTrashMeta({ total: d.meta.total, retentionDays: d.meta.retentionDays });
         } else {
-          setToast({ kind: 'error', title: 'Failed to load trash', text: d.error });
+          setToast({ kind: 'error', title: 'Gagal memuat tempat sampah', text: d.error });
         }
       })
       .catch(() => {
-        setToast({ kind: 'error', title: 'Failed to load trash', text: 'Network error' });
+        setToast({ kind: 'error', title: 'Gagal memuat tempat sampah', text: 'Gangguan jaringan' });
       })
       .finally(() => setTrashLoading(false));
   }
@@ -567,15 +694,15 @@ function FilesPageContent() {
       });
       const json = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
       if (!res.ok || !json.success) {
-        setToast({ kind: 'error', title: 'Restore failed', text: json.error || 'Failed to restore file' });
+        setToast({ kind: 'error', title: 'Gagal memulihkan', text: json.error || 'Gagal memulihkan file' });
         return;
       }
       setTrashItems((cur) => cur.filter((x) => x._id !== id));
       setTrashMeta((cur) => (cur ? { ...cur, total: Math.max(0, cur.total - 1) } : cur));
-      setToast({ kind: 'success', title: 'Restored', text: 'File restored from trash.' });
+      setToast({ kind: 'success', title: 'Berhasil', text: 'File dipulihkan dari tempat sampah.' });
       refresh();
     } catch {
-      setToast({ kind: 'error', title: 'Restore failed', text: 'Network error' });
+      setToast({ kind: 'error', title: 'Gagal memulihkan', text: 'Gangguan jaringan' });
     } finally {
       setRestoreBusyId(null);
     }
@@ -668,11 +795,11 @@ function FilesPageContent() {
                 : '';
             const msg = (json?.error || 'Upload failed') + dupHint;
             setError(msg);
-            setToast({ kind: 'error', title: 'Upload failed', text: msg });
+            setToast({ kind: 'error', title: 'Gagal unggah', text: msg });
           }
         } catch {
-          setError('Upload failed');
-          setToast({ kind: 'error', title: 'Upload failed', text: 'Upload failed' });
+          setError('Gagal unggah');
+          setToast({ kind: 'error', title: 'Gagal unggah', text: 'Gagal unggah' });
         } finally {
           setUploading(false);
           resolve();
@@ -680,8 +807,8 @@ function FilesPageContent() {
       };
 
       xhr.onerror = () => {
-        setError('Network error');
-        setToast({ kind: 'error', title: 'Network error', text: 'Please try again.' });
+        setError('Gangguan jaringan');
+        setToast({ kind: 'error', title: 'Gangguan jaringan', text: 'Silakan coba lagi.' });
         setUploading(false);
         resolve();
       };
@@ -734,17 +861,17 @@ function FilesPageContent() {
       });
       const json = (await res.json()) as UpdateResp;
       if (!res.ok) {
-        setError('error' in json ? json.error : 'Failed to update');
-        setToast({ kind: 'error', title: 'Update failed', text: 'error' in json ? json.error : 'Failed to update' });
+        setError('error' in json ? json.error : 'Gagal menyimpan');
+        setToast({ kind: 'error', title: 'Gagal menyimpan', text: 'error' in json ? json.error : 'Gagal menyimpan' });
         return;
       }
       setEditOpen(false);
       setEditId(null);
-      setToast({ kind: 'success', title: 'Updated', text: 'Metadata has been saved.' });
+      setToast({ kind: 'success', title: 'Tersimpan', text: 'Metadata berhasil disimpan.' });
       refresh();
     } catch {
-      setError('Failed to update');
-      setToast({ kind: 'error', title: 'Update failed', text: 'Failed to update' });
+      setError('Gagal menyimpan');
+      setToast({ kind: 'error', title: 'Gagal menyimpan', text: 'Gagal menyimpan' });
     } finally {
       setEditSaving(false);
     }
@@ -756,15 +883,15 @@ function FilesPageContent() {
       const res = await fetch(`/api/archive/${id}`, { method: 'DELETE', credentials: 'include' });
       const json = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
       if (!res.ok) {
-        setError(json?.error || 'Failed to delete');
-        setToast({ kind: 'error', title: 'Delete failed', text: json?.error || 'Failed to delete' });
+        setError(json?.error || 'Gagal menghapus');
+        setToast({ kind: 'error', title: 'Gagal menghapus', text: json?.error || 'Gagal menghapus' });
         return;
       }
-      setToast({ kind: 'success', title: 'Deleted', text: 'Moved to trash.' });
+      setToast({ kind: 'success', title: 'Berhasil', text: 'Dipindahkan ke tempat sampah.' });
       refresh();
     } catch {
-      setError('Failed to delete');
-      setToast({ kind: 'error', title: 'Delete failed', text: 'Failed to delete' });
+      setError('Gagal menghapus');
+      setToast({ kind: 'error', title: 'Gagal menghapus', text: 'Gagal menghapus' });
     }
   }
 
@@ -821,7 +948,7 @@ function FilesPageContent() {
       const res = await fetch(`/api/archive/${it._id}/share`, { credentials: 'include' });
       const json = (await res.json().catch(() => ({}))) as ShareResp;
       if (!res.ok || !('success' in json && json.success)) {
-        setToast({ kind: 'error', title: 'Share load failed', text: 'error' in json ? json.error : 'Failed to load share setting' });
+        setToast({ kind: 'error', title: 'Gagal memuat pengaturan berbagi', text: 'error' in json ? json.error : 'Gagal memuat pengaturan berbagi' });
         setShareOpen(false);
         return;
       }
@@ -829,7 +956,7 @@ function FilesPageContent() {
       setShareSelected(json.data.sharedWith || []);
       await searchUsersForShare('');
     } catch {
-      setToast({ kind: 'error', title: 'Share load failed', text: 'Network error' });
+      setToast({ kind: 'error', title: 'Gagal memuat pengaturan berbagi', text: 'Gangguan jaringan' });
       setShareOpen(false);
     } finally {
       setShareLoading(false);
@@ -872,14 +999,14 @@ function FilesPageContent() {
       });
       const json = (await res.json().catch(() => ({}))) as ShareResp;
       if (!res.ok || !('success' in json && json.success)) {
-        setToast({ kind: 'error', title: 'Share save failed', text: 'error' in json ? json.error : 'Failed to save share setting' });
+        setToast({ kind: 'error', title: 'Gagal menyimpan pengaturan berbagi', text: 'error' in json ? json.error : 'Gagal menyimpan pengaturan berbagi' });
         return;
       }
-      setToast({ kind: 'success', title: 'Share saved', text: 'Permission updated.' });
+      setToast({ kind: 'success', title: 'Berhasil', text: 'Akses berhasil diperbarui.' });
       setShareOpen(false);
       refresh();
     } catch {
-      setToast({ kind: 'error', title: 'Share save failed', text: 'Network error' });
+      setToast({ kind: 'error', title: 'Gagal menyimpan pengaturan berbagi', text: 'Gangguan jaringan' });
     } finally {
       setShareSaving(false);
     }
@@ -911,6 +1038,16 @@ function FilesPageContent() {
     } catch {
       return false;
     }
+  }
+
+  async function copyWithToast(label: string, text: string) {
+    const raw = String(text ?? '').trim();
+    if (!raw) {
+      setToast({ kind: 'error', title: 'Tidak ada data untuk disalin' });
+      return;
+    }
+    const ok = await copyTextToClipboard(raw);
+    setToast(ok ? { kind: 'success', title: `${label} disalin` } : { kind: 'error', title: `Gagal menyalin ${label}` });
   }
 
   function renderSnippet(snippet: string, needle: string) {
@@ -954,9 +1091,9 @@ function FilesPageContent() {
         data?: { url?: string; fileId?: string; syncedAt?: string | null; cached?: boolean };
       };
       if (!res.ok || !json.success || !json.data?.url) {
-        const msg = json?.error || 'Failed to sync Google Drive link';
+        const msg = json?.error || 'Gagal sinkron link Google Drive';
         setError(msg);
-        setToast({ kind: 'error', title: 'GDrive sync failed', text: msg });
+        setToast({ kind: 'error', title: 'Gagal sinkron GDrive', text: msg });
         return;
       }
 
@@ -992,11 +1129,11 @@ function FilesPageContent() {
       const copied = await copyTextToClipboard(nextLink);
       setToast({
         kind: 'success',
-        title: json.data.cached ? 'GDrive link ready' : 'Synced to Google Drive',
-        text: copied ? 'Link copied to clipboard.' : `Copy manual: ${nextLink}`
+        title: json.data.cached ? 'Link GDrive siap' : 'Berhasil sinkron ke Google Drive',
+        text: copied ? 'Link berhasil disalin.' : `Salin manual: ${nextLink}`
       });
     } catch {
-      setToast({ kind: 'error', title: 'GDrive sync failed', text: 'Network error' });
+      setToast({ kind: 'error', title: 'Gagal sinkron GDrive', text: 'Gangguan jaringan' });
     } finally {
       setGdriveBusyId(null);
     }
@@ -1015,9 +1152,9 @@ function FilesPageContent() {
       });
       const json = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string };
       if (!res.ok || !json.success) {
-        const msg = json?.error || 'Failed to unlink Google Drive file';
+        const msg = json?.error || 'Gagal unlink file Google Drive';
         setError(msg);
-        setToast({ kind: 'error', title: 'GDrive unlink failed', text: msg });
+        setToast({ kind: 'error', title: 'Gagal unlink GDrive', text: msg });
         return;
       }
 
@@ -1031,9 +1168,9 @@ function FilesPageContent() {
       setDetailItem((cur) =>
         cur && cur._id === it._id ? { ...cur, gdriveLink: '', gdriveFileId: '', gdriveSyncedAt: null, gdriveSyncError: '' } : cur
       );
-      setToast({ kind: 'success', title: 'Unlinked', text: 'Google Drive link removed.' });
+      setToast({ kind: 'success', title: 'Berhasil', text: 'Link Google Drive sudah dihapus.' });
     } catch {
-      setToast({ kind: 'error', title: 'GDrive unlink failed', text: 'Network error' });
+      setToast({ kind: 'error', title: 'Gagal unlink GDrive', text: 'Gangguan jaringan' });
     } finally {
       setGdriveUnlinkBusyId(null);
     }
@@ -1057,6 +1194,281 @@ function FilesPageContent() {
     return 'badge';
   }
 
+  function DesktopTable() {
+    return (
+      <div className="tableWrap hide-mobile">
+        <table className="table">
+          <thead>
+            <tr>
+              <th style={{ width: 420 }}>File</th>
+              <th style={{ width: 160 }}>No. Arsip</th>
+              <th style={{ width: 110 }}>OCR</th>
+              <th style={{ width: 170 }}>Diunggah</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              Array.from({ length: 8 }).map((_, idx) => (
+                <tr key={`sk-${idx}`}>
+                  <td>
+                    <div className="skeleton" style={{ height: 14, width: '64%' }} />
+                    <div style={{ height: 6 }} />
+                    <div className="skeleton" style={{ height: 12, width: '86%' }} />
+                  </td>
+                  <td>
+                    <div className="skeleton" style={{ height: 12, width: '72%' }} />
+                  </td>
+                  <td>
+                    <div className="skeleton" style={{ height: 22, width: '80%' }} />
+                  </td>
+                  <td>
+                    <div className="skeleton" style={{ height: 12, width: '78%' }} />
+                  </td>
+                  <td>
+                    <div className="skeleton" style={{ height: 32, width: 44 }} />
+                  </td>
+                </tr>
+              ))
+            ) : items.length ? (
+              items.map((it) => (
+                <tr key={it._id} onClick={() => openDetail(it)} style={{ cursor: 'pointer' }}>
+                  <td>
+                    <div className="fileCellTitle" title={it.title || '-'}>
+                      Judul: {it.title?.trim() ? it.title : '-'}
+                    </div>
+                    <div className="fileCellMeta" title={it.originalName}>
+                      File: {it.originalName}
+                    </div>
+                    {q.trim() && it.searchSnippet ? (
+                      <div className="fileCellMeta" style={{ whiteSpace: 'normal', lineHeight: 1.35 }} title={it.searchSnippet}>
+                        OCR: {renderSnippet(it.searchSnippet, q)}
+                      </div>
+                    ) : null}
+                  </td>
+                  <td style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>{(it as any).archiveNumber || '-'}</td>
+                  <td>
+                    <span className={ocrBadgeClass(it.ocrStatus)}>
+                      <span className="badgeDot" />
+                      {it.ocrStatus || '-'}
+                    </span>
+                  </td>
+                  <td style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>{new Date(it.createdAt).toLocaleString()}</td>
+                  <td>
+                    <div className="menuWrap" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="btn btnSecondary"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                          const nextId = openMenu?.id === it._id ? null : it._id;
+                          if (nextId) setOpenMenu({ id: it._id, x: Math.round(rect.left), y: Math.round(rect.bottom + 8) });
+                          else setOpenMenu(null);
+                        }}
+                      >
+                        ⋯
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={5} style={{ color: 'var(--muted)' }}>
+                  Tidak ada data arsip. Coba ubah filter atau klik Muat Ulang.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  function MobileList() {
+    return (
+      <div className="fileList hide-desktop">
+        {!loading && !items.length ? (
+          <div className="alert">
+            <div style={{ fontWeight: 900 }}>Tidak ada data</div>
+            <div className="alertText">Coba ubah filter atau klik Muat Ulang.</div>
+          </div>
+        ) : null}
+        {(loading ? [] : items).map((it) => {
+          const isExpanded = expandedId === it._id;
+          const canEdit = canManageItem(it, me);
+          const visibility = itemVisibility(it);
+
+          return (
+            <div key={it._id} className={`fileItem ${isExpanded ? 'fileItemExpanded' : ''}`}>
+              <div className="fileItemHeader" onClick={() => setExpandedId(isExpanded ? null : it._id)}>
+                <div className="fileItemTitleArea">
+                  <div className="fileItemTitle">{it.title?.trim() ? it.title : it.originalName}</div>
+                  <div className="fileItemSubtitle">
+                    <span>📅 {new Date(it.createdAt).toLocaleDateString()}</span>
+                    <span>📂 {it.category || 'Tanpa kategori'}</span>
+                    <span className={ocrBadgeClass(it.ocrStatus)}>
+                      <span className="badgeDot" />
+                      {it.ocrStatus || 'pending'}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span
+                    style={{
+                      fontSize: 20,
+                      transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s'
+                    }}
+                  >
+                    ▼
+                  </span>
+                </div>
+              </div>
+
+              {isExpanded && (
+                <div className="fileItemContent">
+                  <div className="fileItemGrid">
+                    <div>
+                      <div className="fileDetailLabel">Nama File</div>
+                      <div className="fileDetailValue">{it.originalName}</div>
+                    </div>
+                    <div>
+                      <div className="fileDetailLabel">Nomor Arsip</div>
+                      <div className="fileDetailValue">{(it as any).archiveNumber || '-'}</div>
+                    </div>
+                    <div>
+                      <div className="fileDetailLabel">Jenis Dokumen</div>
+                      <div className="fileDetailValue">{it.docKind || it.type || '-'}</div>
+                    </div>
+                    <div>
+                      <div className="fileDetailLabel">Nomor Surat</div>
+                      <div className="fileDetailValue">{it.docNumber || '-'}</div>
+                    </div>
+                    <div>
+                      <div className="fileDetailLabel">Akses</div>
+                      <div className="fileDetailValue" style={{ textTransform: 'capitalize' }}>
+                        {visibility} {visibility === 'shared' ? `(${it.sharedWith?.length || 0} users)` : ''}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="fileDetailLabel">Ukuran</div>
+                      <div className="fileDetailValue">{Math.round(it.size / 1024)} KB</div>
+                    </div>
+                  </div>
+
+                  {q.trim() && it.searchSnippet ? (
+                    <div style={{ marginTop: 16, padding: 12, background: 'var(--panel)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                      <div className="fileDetailLabel">Cuplikan OCR</div>
+                      <div style={{ fontSize: 13, lineHeight: 1.5 }}>{renderSnippet(it.searchSnippet, q)}</div>
+                    </div>
+                  ) : null}
+
+                  <div className="fileItemActions">
+                    <button className="btn" onClick={() => openPreview(it)}>
+                      Pratinjau
+                    </button>
+                    <button className="btn btnSecondary" onClick={() => openDetail(it)}>
+                      Detail Lengkap
+                    </button>
+                    {canEdit && (
+                      <>
+                        <button className="btn btnSecondary" onClick={() => openEdit(it)}>
+                          Edit Metadata
+                        </button>
+                        <button
+                          className="btn btnSecondary"
+                          onClick={() => {
+                            setShareItem(it);
+                            setShareVisibility(itemVisibility(it));
+                            setShareSelected(it.sharedWith || []);
+                            setShareOpen(true);
+                          }}
+                        >
+                          Bagikan
+                        </button>
+                      </>
+                    )}
+                    {me && (me.role === 'admin' || isOwnerItem(it, me)) && (
+                      <button className="btn btnSecondary" style={{ color: 'var(--danger)' }} onClick={() => openDeleteConfirm(it)}>
+                        Hapus
+                      </button>
+                    )}
+                    {it.gdriveLink && (
+                      <a href={it.gdriveLink} target="_blank" rel="noreferrer" className="btn btnSecondary">
+                        Google Drive
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  function PaginationBar() {
+    const total = meta?.total ?? 0;
+    const totalPages = meta?.totalPages ?? 1;
+    const from = total ? (page - 1) * limit + 1 : 0;
+    const to = total ? Math.min(page * limit, total) : 0;
+    const canPrev = page > 1;
+    const canNext = meta ? page < totalPages : false;
+
+    function jumpTo(raw: string) {
+      const n = Math.trunc(Number(raw));
+      if (!Number.isFinite(n)) return;
+      const clamped = Math.max(1, Math.min(totalPages, n));
+      setPage(clamped);
+    }
+
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ color: 'var(--muted)' }}>
+          Menampilkan <strong style={{ color: 'var(--text)' }}>{from}</strong>–<strong style={{ color: 'var(--text)' }}>{to}</strong> dari{' '}
+          <strong style={{ color: 'var(--text)' }}>{total}</strong>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button className="btn btnSecondary" disabled={!canPrev} onClick={() => setPage(1)} type="button">
+            Pertama
+          </button>
+          <button className="btn btnSecondary" disabled={!canPrev} onClick={() => setPage((p) => p - 1)} type="button">
+            Sebelumnya
+          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <div style={{ color: 'var(--muted)' }}>Halaman</div>
+            <input
+              className="input"
+              style={{ width: 92, textAlign: 'center' }}
+              type="number"
+              min={1}
+              max={totalPages}
+              value={pageJump}
+              onChange={(e) => setPageJump(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  jumpTo(pageJump);
+                }
+              }}
+              onBlur={() => jumpTo(pageJump)}
+            />
+            <div style={{ color: 'var(--muted)' }}>/ {totalPages}</div>
+          </div>
+          <button className="btn btnSecondary" disabled={!canNext} onClick={() => setPage((p) => p + 1)} type="button">
+            Berikutnya
+          </button>
+          <button className="btn btnSecondary" disabled={!canNext} onClick={() => setPage(totalPages)} type="button">
+            Terakhir
+          </button>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <AppShell>
@@ -1071,38 +1483,48 @@ function FilesPageContent() {
       <div className="container">
         <div className="filesHero">
           <div>
-            <h1 className="filesHeroTitle">File Archive</h1>
-            <div className="filesHeroSub">Public files and your private files</div>
+            <h1 className="filesHeroTitle">Arsip Dokumen</h1>
+            <div className="filesHeroSub">Semua arsip yang bisa kamu akses</div>
           </div>
           <div className="row" style={{ alignItems: 'center', gap: 10 }}>
             <button className="btn btnSecondary" type="button" onClick={openTrash}>
-              Trash
+              Tempat Sampah
             </button>
             <button className="btn" type="button" onClick={openUpload}>
-              Upload
+              Unggah
             </button>
           </div>
         </div>
 
         <div style={{ height: 12 }} />
 
-        {message ? <div style={{ display: 'none' }}>{message}</div> : null}
-        {error ? <div style={{ display: 'none' }}>{error}</div> : null}
+        {error ? (
+          <div className="alert alertError">
+            <div style={{ fontWeight: 900 }}>Gagal memuat data</div>
+            <div className="alertText">{error}</div>
+          </div>
+        ) : null}
+        {message ? (
+          <div className="alert alertSuccess">
+            <div style={{ fontWeight: 900 }}>Berhasil</div>
+            <div className="alertText">{message}</div>
+          </div>
+        ) : null}
 
         <div style={{ height: 12 }} />
 
         <div className="card cardGlass">
           <div className="row" style={{ alignItems: 'end' }}>
             <label style={{ flex: 1, minWidth: 220 }}>
-              Search
+              Cari
               <input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="filename…" />
             </label>
             <label style={{ flex: 1, minWidth: 220 }}>
-              Doc Number
+              Nomor Surat
               <input className="input" value={fDocNumber} onChange={(e) => setFDocNumber(e.target.value)} placeholder="nomor surat…" />
             </label>
             <label style={{ width: 140 }}>
-              Per Page
+              Per Halaman
               <select className="input" value={limit} onChange={(e) => setLimit(Number(e.target.value))}>
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -1110,7 +1532,10 @@ function FilesPageContent() {
               </select>
             </label>
             <button className="btn btnSecondary" onClick={refresh} type="button">
-              Refresh
+              Muat Ulang
+            </button>
+            <button className="btn btnSecondary" onClick={resetFilters} type="button" disabled={!activeFilters.length}>
+              Reset Filter
             </button>
           </div>
 
@@ -1118,11 +1543,11 @@ function FilesPageContent() {
 
           <div className="row" style={{ alignItems: 'end' }}>
             <label style={{ width: 200 }}>
-              Doc Date From
+              Tanggal Surat Dari
               <input className="input" type="date" value={fDocFrom} onChange={(e) => setFDocFrom(e.target.value)} />
             </label>
             <label style={{ width: 200 }}>
-              Doc Date To
+              Tanggal Surat Sampai
               <input className="input" type="date" value={fDocTo} onChange={(e) => setFDocTo(e.target.value)} />
             </label>
             <label style={{ flex: 1, minWidth: 220 }}>
@@ -1145,7 +1570,7 @@ function FilesPageContent() {
                   setFCategory(root ? categoryLabel(root) : '');
                 }}
               >
-                <option value="">All</option>
+                <option value="">Semua</option>
                 {rootCategories.map((c) => (
                   <option key={c._id} value={c.slug}>
                     {c.name}
@@ -1201,7 +1626,7 @@ function FilesPageContent() {
               }}
               style={{ height: 40 }}
             >
-              Export Excel
+              Ekspor Excel
             </button>
           </div>
 
@@ -1212,211 +1637,55 @@ function FilesPageContent() {
               Total <strong>{meta?.total ?? 0}</strong>
             </span>
             <span className="quickPill">
-              Page <strong>{page}</strong> / <strong>{meta?.totalPages ?? 1}</strong>
+              Halaman <strong>{page}</strong> / <strong>{meta?.totalPages ?? 1}</strong>
             </span>
             <span className="quickPill">
-              Per Page <strong>{limit}</strong>
+              Per Halaman <strong>{limit}</strong>
             </span>
           </div>
 
           <div style={{ height: 12 }} />
 
-          {loading ? <div style={{ color: 'var(--muted)' }}>Loading…</div> : null}
+          {activeFilters.length ? (
+            <div className="chipRow" style={{ marginTop: 0 }}>
+              {activeFilters.map((c) => (
+                <button key={c.key} type="button" className="chip chipStrong" onClick={c.clear} title="Klik untuk hapus filter ini">
+                  {c.text} <span aria-hidden="true">×</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
 
-          {/* Desktop View: Table */}
-          <div className="tableWrap hide-mobile">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: 420 }}>File</th>
-                  <th style={{ width: 160 }}>No. Arsip</th>
-                  <th style={{ width: 110 }}>OCR</th>
-                  <th style={{ width: 170 }}>Uploaded</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((it) => (
-                  <tr key={it._id} onClick={() => openDetail(it)} style={{ cursor: 'pointer' }}>
-                    <td>
-                      <div className="fileCellTitle" title={it.title || '-'}>
-                        Judul: {it.title?.trim() ? it.title : '-'}
-                      </div>
-                      <div className="fileCellMeta" title={it.originalName}>
-                        File: {it.originalName}
-                      </div>
-                      {q.trim() && it.searchSnippet ? (
-                        <div className="fileCellMeta" style={{ whiteSpace: 'normal', lineHeight: 1.35 }} title={it.searchSnippet}>
-                          OCR: {renderSnippet(it.searchSnippet, q)}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td style={{ color: '#9ca3af', whiteSpace: 'nowrap' }}>
-                      {(it as any).archiveNumber || '-'}
-                    </td>
-                    <td>
-                      <span className={ocrBadgeClass(it.ocrStatus)}>
-                        <span className="badgeDot" />
-                        {it.ocrStatus || '-'}
-                      </span>
-                    </td>
-                    <td style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>{new Date(it.createdAt).toLocaleString()}</td>
-                    <td>
-                      <div className="menuWrap" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          className="btn btnSecondary"
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                            const nextId = openMenu?.id === it._id ? null : it._id;
-                            if (nextId) setOpenMenu({ id: it._id, x: Math.round(rect.left), y: Math.round(rect.bottom + 8) });
-                            else setOpenMenu(null);
-                          }}
-                        >
-                          ⋯
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {loading ? (
+            <div className="alert alertInfo">
+              <div style={{ fontWeight: 900 }}>Memuat…</div>
+              <div className="alertText">Sedang mengambil daftar arsip.</div>
+            </div>
+          ) : null}
 
-          {/* Mobile View: Accordion */}
-          <div className="fileList hide-desktop">
-            {items.map((it) => {
-              const isExpanded = expandedId === it._id;
-              const canEdit = canManageItem(it, me);
-              const visibility = itemVisibility(it);
-
-              return (
-                <div key={it._id} className={`fileItem ${isExpanded ? 'fileItemExpanded' : ''}`}>
-                  <div className="fileItemHeader" onClick={() => setExpandedId(isExpanded ? null : it._id)}>
-                    <div className="fileItemTitleArea">
-                      <div className="fileItemTitle">
-                        {it.title?.trim() ? it.title : it.originalName}
-                      </div>
-                      <div className="fileItemSubtitle">
-                        <span>📅 {new Date(it.createdAt).toLocaleDateString()}</span>
-                        <span>📂 {it.category || 'Uncategorized'}</span>
-                        <span className={ocrBadgeClass(it.ocrStatus)}>
-                          <span className="badgeDot" />
-                          {it.ocrStatus || 'pending'}
-                        </span>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <span style={{ fontSize: 20, transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                        ▼
-                      </span>
-                    </div>
-                  </div>
-
-                  {isExpanded && (
-                    <div className="fileItemContent">
-                      <div className="fileItemGrid">
-                        <div>
-                          <div className="fileDetailLabel">Original Filename</div>
-                          <div className="fileDetailValue">{it.originalName}</div>
-                        </div>
-                        <div>
-                          <div className="fileDetailLabel">Nomor Arsip</div>
-                          <div className="fileDetailValue">{(it as any).archiveNumber || '-'}</div>
-                        </div>
-                        <div>
-                          <div className="fileDetailLabel">Jenis Dokumen</div>
-                          <div className="fileDetailValue">{it.docKind || it.type || '-'}</div>
-                        </div>
-                        <div>
-                          <div className="fileDetailLabel">Nomor Dokumen</div>
-                          <div className="fileDetailValue">{it.docNumber || '-'}</div>
-                        </div>
-                        <div>
-                          <div className="fileDetailLabel">Visibility</div>
-                          <div className="fileDetailValue" style={{ textTransform: 'capitalize' }}>
-                            {visibility} {visibility === 'shared' ? `(${it.sharedWith?.length || 0} users)` : ''}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="fileDetailLabel">Size</div>
-                          <div className="fileDetailValue">{Math.round(it.size / 1024)} KB</div>
-                        </div>
-                      </div>
-
-                      {q.trim() && it.searchSnippet ? (
-                        <div style={{ marginTop: 16, padding: 12, background: 'var(--panel)', borderRadius: 8, border: '1px solid var(--border)' }}>
-                          <div className="fileDetailLabel">Search Match (OCR)</div>
-                          <div style={{ fontSize: 13, lineHeight: 1.5 }}>{renderSnippet(it.searchSnippet, q)}</div>
-                        </div>
-                      ) : null}
-
-                      <div className="fileItemActions">
-                        <button className="btn" onClick={() => openPreview(it)}>Pratinjau</button>
-                        <button className="btn btnSecondary" onClick={() => openDetail(it)}>Detail Lengkap</button>
-                        {canEdit && (
-                          <>
-                            <button className="btn btnSecondary" onClick={() => openEdit(it)}>Edit Metadata</button>
-                            <button className="btn btnSecondary" onClick={() => {
-                              setShareItem(it);
-                              setShareVisibility(itemVisibility(it));
-                              setShareSelected(it.sharedWith || []);
-                              setShareOpen(true);
-                            }}>Share</button>
-                          </>
-                        )}
-                        {me && (me.role === 'admin' || isOwnerItem(it, me)) && (
-                          <button className="btn btnSecondary" style={{ color: 'var(--danger)' }} onClick={() => openDeleteConfirm(it)}>Delete</button>
-                        )}
-                        {it.gdriveLink && (
-                          <a href={it.gdriveLink} target="_blank" rel="noreferrer" className="btn btnSecondary">Google Drive</a>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <DesktopTable />
+          <MobileList />
 
           {items.length === 0 && !loading ? (
             <div className="card" style={{ padding: 32, textAlign: 'center' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>📁</div>
-              <h2 style={{ margin: 0 }}>No files found</h2>
-              <p style={{ color: 'var(--muted)' }}>Try adjusting your filters or search keywords.</p>
+              <h2 style={{ margin: 0 }}>Tidak ada file</h2>
+              <p style={{ color: 'var(--muted)' }}>Coba ubah filter atau kata kunci pencarian.</p>
             </div>
           ) : null}
 
           <div style={{ height: 12 }} />
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ color: 'var(--muted)' }}>Total: {meta?.total ?? 0}</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button className="btn btnSecondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                Prev
-              </button>
-              <div style={{ color: 'var(--muted)' }}>
-                Page {page} / {meta?.totalPages ?? 1}
-              </div>
-              <button
-                className="btn btnSecondary"
-                disabled={meta ? page >= meta.totalPages : true}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </button>
-            </div>
-          </div>
+          <PaginationBar />
         </div>
 
         {uploadOpen ? (
           <div className="modalOverlay" onClick={() => (uploading ? null : setUploadOpen(false))}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Upload File</h3>
+                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Unggah File</h3>
                 <button className="btn btnSecondary" type="button" onClick={() => setUploadOpen(false)} disabled={uploading}>
-                  Close
+                  Tutup
                 </button>
               </div>
 
@@ -1424,7 +1693,7 @@ function FilesPageContent() {
 
               <div className="row" style={{ alignItems: 'end' }}>
                 <button className="btn btnSecondary" type="button" onClick={() => fileRef.current?.click()}>
-                  Choose File
+                  Pilih File
                 </button>
                 <input
                   ref={fileRef}
@@ -1433,7 +1702,7 @@ function FilesPageContent() {
                   style={{ display: 'none' }}
                   onChange={(e) => onChooseUploadFiles(e.target.files ? Array.from(e.target.files) : [])}
                 />
-                <div style={{ color: 'var(--muted)' }}>{uploadFiles.length ? `${uploadFiles.length} file(s) selected` : 'No file selected'}</div>
+                <div style={{ color: 'var(--muted)' }}>{uploadFiles.length ? `${uploadFiles.length} file dipilih` : 'Belum ada file dipilih'}</div>
               </div>
 
               {uploadFiles.length ? (
@@ -1441,7 +1710,7 @@ function FilesPageContent() {
                   {uploadFiles.slice(0, 6).map((f) => (
                     <div key={`${f.name}-${f.size}-${f.lastModified}`}>{f.name}</div>
                   ))}
-                  {uploadFiles.length > 6 ? <div>+{uploadFiles.length - 6} more…</div> : null}
+                  {uploadFiles.length > 6 ? <div>+{uploadFiles.length - 6} lainnya…</div> : null}
                 </div>
               ) : null}
 
@@ -1450,6 +1719,7 @@ function FilesPageContent() {
               <label>
                 Judul Dokumen
                 <input
+                  ref={uploadTitleRef}
                   className="input"
                   value={uploadTitle}
                   onChange={(e) => setUploadTitle(e.target.value)}
@@ -1482,7 +1752,7 @@ function FilesPageContent() {
                   />
                 </label>
                 <label style={{ flex: 1, minWidth: 220 }}>
-                  Doc Number
+                  Nomor Surat
                   <input
                     className="input"
                     value={uploadDocNumber}
@@ -1491,7 +1761,7 @@ function FilesPageContent() {
                   />
                 </label>
                 <label style={{ flex: 1, minWidth: 220 }}>
-                  Tags (comma separated)
+                  Tag (pisahkan koma)
                   <input
                     className="input"
                     value={uploadTags}
@@ -1520,7 +1790,7 @@ function FilesPageContent() {
                       setUploadCategory(root ? categoryLabel(root) : '');
                     }}
                   >
-                    <option value="">Select…</option>
+                    <option value="">Pilih…</option>
                     {rootCategories.map((c) => (
                       <option key={c._id} value={c.slug}>
                         {c.name}
@@ -1571,7 +1841,7 @@ function FilesPageContent() {
                     onClick={() => openCategoryModal('upload')}
                     style={{ height: 40 }}
                   >
-                    {creatingCategory ? 'Creating…' : '+ Kategori'}
+                    {creatingCategory ? 'Membuat…' : '+ Kategori'}
                   </button>
                 ) : null}
               </div>
@@ -1579,7 +1849,7 @@ function FilesPageContent() {
               <div style={{ height: 12 }} />
 
               <label>
-                Description
+                Deskripsi
                 <textarea className="input" rows={3} value={uploadDesc} onChange={(e) => setUploadDesc(e.target.value)} />
               </label>
 
@@ -1605,7 +1875,7 @@ function FilesPageContent() {
                   }}
                   disabled={!uploadFiles.length}
                 />
-                Override metadata per file (hybrid)
+                Atur metadata per file (hybrid)
               </label>
 
               {uploadHybridEnabled && uploadFiles.length ? (
@@ -1625,7 +1895,7 @@ function FilesPageContent() {
                             <input className="input" value={ov.title} onChange={(e) => updateUploadOverride(idx, { title: e.target.value })} />
                           </label>
                           <label style={{ flex: 1, minWidth: 220 }}>
-                            Doc Number Override
+                            Nomor Surat Override
                             <input className="input" value={ov.docNumber} onChange={(e) => updateUploadOverride(idx, { docNumber: e.target.value })} />
                           </label>
                         </div>
@@ -1640,7 +1910,7 @@ function FilesPageContent() {
                             <input className="input" value={ov.docKind} onChange={(e) => updateUploadOverride(idx, { docKind: e.target.value })} />
                           </label>
                           <label style={{ flex: 1, minWidth: 220 }}>
-                            Visibility Override
+                            Akses Override
                             <select className="input" value={ov.visibility} onChange={(e) => updateUploadOverride(idx, { visibility: e.target.value as UploadFileOverride['visibility'] })}>
                               <option value="inherit">Ikuti Global</option>
                               <option value="public">Public</option>
@@ -1660,12 +1930,12 @@ function FilesPageContent() {
                         </label>
                         <div style={{ height: 8 }} />
                         <label>
-                          Tags Override (comma separated)
+                          Tag Override (pisahkan koma)
                           <input className="input" value={ov.tags} onChange={(e) => updateUploadOverride(idx, { tags: e.target.value })} />
                         </label>
                         <div style={{ height: 8 }} />
                         <label>
-                          Description Override
+                          Deskripsi Override
                           <textarea className="input" rows={2} value={ov.description} onChange={(e) => updateUploadOverride(idx, { description: e.target.value })} />
                         </label>
                       </div>
@@ -1676,13 +1946,13 @@ function FilesPageContent() {
 
               <div style={{ height: 12 }} />
 
-              {uploading ? <div style={{ color: 'var(--muted)' }}>Progress: {progress}%</div> : null}
+              {uploading ? <div style={{ color: 'var(--muted)' }}>Progres: {progress}%</div> : null}
 
               <div style={{ height: 12 }} />
 
               <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
                 <button className="btn btnPrimary" type="button" onClick={doUpload} disabled={!uploadFiles.length || uploading} style={{ width: '100%', padding: '12px', fontSize: '16px' }}>
-                  {uploading ? 'Uploading…' : '🚀 Mulai Unggah'}
+                  {uploading ? 'Mengunggah…' : '🚀 Mulai Unggah'}
                 </button>
               </div>
             </div>
@@ -1703,7 +1973,7 @@ function FilesPageContent() {
                   }}
                   disabled={editSaving}
                 >
-                  Close
+                  Tutup
                 </button>
               </div>
 
@@ -1711,7 +1981,7 @@ function FilesPageContent() {
 
               <label>
                 Judul Dokumen
-                <input className="input" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+                <input ref={editTitleRef} className="input" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
               </label>
 
               <div style={{ height: 12 }} />
@@ -1729,11 +1999,11 @@ function FilesPageContent() {
                   <input className="input" value={editDocKind} onChange={(e) => setEditDocKind(e.target.value)} />
                 </label>
                 <label style={{ flex: 1, minWidth: 220 }}>
-                  Doc Number
+                  Nomor Surat
                   <input className="input" value={editDocNumber} onChange={(e) => setEditDocNumber(e.target.value)} />
                 </label>
                 <label style={{ flex: 1, minWidth: 220 }}>
-                  Tags (comma separated)
+                  Tag (pisahkan koma)
                   <input className="input" value={editTags} onChange={(e) => setEditTags(e.target.value)} />
                 </label>
               </div>
@@ -1808,7 +2078,7 @@ function FilesPageContent() {
                     onClick={() => openCategoryModal('edit')}
                     style={{ height: 40 }}
                   >
-                    {creatingCategory ? 'Creating…' : '+ Kategori'}
+                    {creatingCategory ? 'Membuat…' : '+ Kategori'}
                   </button>
                 ) : null}
               </div>
@@ -1816,7 +2086,7 @@ function FilesPageContent() {
               <div style={{ height: 12 }} />
 
               <label>
-                Description
+                Deskripsi
                 <textarea className="input" rows={3} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
               </label>
 
@@ -1831,7 +2101,7 @@ function FilesPageContent() {
 
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn" type="button" onClick={saveEdit} disabled={editSaving}>
-                  {editSaving ? 'Saving…' : 'Save'}
+                  {editSaving ? 'Menyimpan…' : 'Simpan'}
                 </button>
               </div>
             </div>
@@ -1849,7 +2119,7 @@ function FilesPageContent() {
           >
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Preview</h3>
+                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Pratinjau</h3>
                 <button
                   className="btn btnSecondary"
                   type="button"
@@ -1859,7 +2129,7 @@ function FilesPageContent() {
                     setPreviewMime(null);
                   }}
                 >
-                  Close
+                  Tutup
                 </button>
               </div>
 
@@ -1867,14 +2137,21 @@ function FilesPageContent() {
 
               {previewUrl ? (
                 previewMime?.startsWith('image/') ? (
-                  <img src={previewUrl} style={{ width: '100%', borderRadius: 12, border: '1px solid var(--border)' }} />
+                  <Image
+                    unoptimized
+                    src={previewUrl}
+                    alt="Pratinjau dokumen"
+                    width={1200}
+                    height={800}
+                    style={{ width: '100%', height: 'auto', borderRadius: 12, border: '1px solid var(--border)' }}
+                  />
                 ) : previewMime === 'application/pdf' ? (
                   <iframe
                     src={previewUrl}
                     style={{ width: '100%', height: 600, borderRadius: 12, border: '1px solid var(--border)' }}
                   />
                 ) : (
-                  <div style={{ color: 'var(--muted)' }}>Preview tidak didukung untuk tipe ini. Silakan Download.</div>
+                  <div style={{ color: 'var(--muted)' }}>Pratinjau tidak didukung untuk tipe ini. Silakan unduh.</div>
                 )
               ) : null}
             </div>
@@ -1904,7 +2181,7 @@ function FilesPageContent() {
                           setOpenMenu(null);
                         }}
                       >
-                        Preview
+                        Pratinjau
                       </button>
                       <a
                         className="menuItem"
@@ -1913,7 +2190,7 @@ function FilesPageContent() {
                           setOpenMenu(null);
                         }}
                       >
-                        Download
+                        Unduh
                       </a>
                       {canEdit ? (
                         <button
@@ -1925,7 +2202,7 @@ function FilesPageContent() {
                             setOpenMenu(null);
                           }}
                         >
-                          {gdriveBusyId === it._id ? 'Syncing GDrive…' : 'Get Link GDrive'}
+                          {gdriveBusyId === it._id ? 'Sinkron GDrive…' : 'Ambil Link GDrive'}
                         </button>
                       ) : null}
                       {it.gdriveLink ? (
@@ -1938,7 +2215,7 @@ function FilesPageContent() {
                             setOpenMenu(null);
                           }}
                         >
-                          Open Link GDrive
+                          Buka Link GDrive
                         </a>
                       ) : null}
                       {canEdit && it.gdriveLink ? (
@@ -1951,7 +2228,7 @@ function FilesPageContent() {
                             setOpenMenu(null);
                           }}
                         >
-                          {gdriveUnlinkBusyId === it._id ? 'Unlinking…' : 'Unlink GDrive'}
+                          {gdriveUnlinkBusyId === it._id ? 'Unlink…' : 'Unlink GDrive'}
                         </button>
                       ) : null}
                       {canEdit ? (
@@ -1965,7 +2242,7 @@ function FilesPageContent() {
                                 setOpenMenu(null);
                               }}
                             >
-                              Share
+                              Bagikan
                             </button>
                           ) : null}
                           <button
@@ -1987,7 +2264,7 @@ function FilesPageContent() {
                                 setOpenMenu(null);
                               }}
                             >
-                              Delete
+                              Hapus
                             </button>
                           ) : null}
                         </>
@@ -2004,23 +2281,23 @@ function FilesPageContent() {
           <div className="modalOverlay" onClick={() => setDeleteOpen(false)}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Delete file?</h3>
+                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Hapus file?</h3>
                 <button className="btn btnSecondary" type="button" onClick={() => setDeleteOpen(false)}>
-                  Close
+                  Tutup
                 </button>
               </div>
 
               <div style={{ height: 12 }} />
 
               <div style={{ color: 'var(--muted)' }}>
-                This will move <span style={{ fontWeight: 800, color: 'var(--text)' }}>{deleteName}</span> to trash.
+                File <span style={{ fontWeight: 800, color: 'var(--text)' }}>{deleteName}</span> akan dipindahkan ke tempat sampah.
               </div>
 
               <div style={{ height: 14 }} />
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button className="btn btnSecondary" type="button" onClick={() => setDeleteOpen(false)}>
-                  Cancel
+                  Batal
                 </button>
                 <button
                   className="btn"
@@ -2033,7 +2310,7 @@ function FilesPageContent() {
                     if (id) await deleteItem(id);
                   }}
                 >
-                  Delete
+                  Hapus
                 </button>
               </div>
             </div>
@@ -2051,7 +2328,7 @@ function FilesPageContent() {
                   onClick={() => setUnlinkConfirmOpen(false)}
                   disabled={Boolean(gdriveUnlinkBusyId)}
                 >
-                  Close
+                  Tutup
                 </button>
               </div>
 
@@ -2071,7 +2348,7 @@ function FilesPageContent() {
                   onClick={() => setUnlinkConfirmOpen(false)}
                   disabled={Boolean(gdriveUnlinkBusyId)}
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button
                   className="btn"
@@ -2085,7 +2362,7 @@ function FilesPageContent() {
                     setUnlinkConfirmItem(null);
                   }}
                 >
-                  {gdriveUnlinkBusyId ? 'Unlinking…' : 'Unlink'}
+                  {gdriveUnlinkBusyId ? 'Unlink…' : 'Unlink'}
                 </button>
               </div>
             </div>
@@ -2096,9 +2373,9 @@ function FilesPageContent() {
           <div className="modalOverlay" onClick={() => (shareSaving ? null : setShareOpen(false))}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Share File</h3>
+                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Bagikan Arsip</h3>
                 <button className="btn btnSecondary" type="button" onClick={() => setShareOpen(false)} disabled={shareSaving}>
-                  Close
+                  Tutup
                 </button>
               </div>
               <div style={{ height: 10 }} />
@@ -2106,15 +2383,15 @@ function FilesPageContent() {
               <div style={{ height: 12 }} />
 
               {shareLoading ? (
-                <div style={{ color: 'var(--muted)' }}>Loading share settings…</div>
+                <div style={{ color: 'var(--muted)' }}>Memuat pengaturan berbagi…</div>
               ) : (
                 <>
                   <label>
-                    Visibility
+                    Akses
                     <select className="input" value={shareVisibility} onChange={(e) => setShareVisibility(e.target.value as 'public' | 'private' | 'shared')}>
-                      <option value="private">Private (owner only)</option>
-                      <option value="shared">Shared (selected users)</option>
-                      <option value="public">Public (all users)</option>
+                      <option value="private">Private (owner)</option>
+                      <option value="shared">Shared (user terpilih)</option>
+                      <option value="public">Public (semua user)</option>
                     </select>
                   </label>
 
@@ -2124,6 +2401,7 @@ function FilesPageContent() {
                       <label>
                         Cari User
                         <input
+                          ref={shareQueryInputRef}
                           className="input"
                           value={shareQuery}
                           onChange={(e) => setShareQuery(e.target.value)}
@@ -2131,7 +2409,7 @@ function FilesPageContent() {
                         />
                       </label>
                       <div style={{ height: 8 }} />
-                      <div style={{ color: 'var(--muted)', fontSize: 12 }}>{shareUsersLoading ? 'Searching users…' : `${shareUsers.length} user ditemukan`}</div>
+                      <div style={{ color: 'var(--muted)', fontSize: 12 }}>{shareUsersLoading ? 'Mencari user…' : `${shareUsers.length} user ditemukan`}</div>
                       <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 8, maxHeight: 160, overflow: 'auto', marginTop: 8 }}>
                         {shareUsers.map((u) => {
                           const selected = shareSelected.some((x) => x.userId === u.userId);
@@ -2160,7 +2438,7 @@ function FilesPageContent() {
                               <option value="editor">Editor</option>
                             </select>
                             <button className="btn btnSecondary" type="button" onClick={() => toggleShareUser(m)}>
-                              Remove
+                              Hapus
                             </button>
                           </div>
                         ))}
@@ -2174,10 +2452,10 @@ function FilesPageContent() {
               <div style={{ height: 14 }} />
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button className="btn btnSecondary" type="button" onClick={() => setShareOpen(false)} disabled={shareSaving}>
-                  Cancel
+                  Batal
                 </button>
                 <button className="btn" type="button" onClick={saveShare} disabled={shareSaving || shareLoading}>
-                  {shareSaving ? 'Saving…' : 'Save Share'}
+                  {shareSaving ? 'Menyimpan…' : 'Simpan'}
                 </button>
               </div>
             </div>
@@ -2190,7 +2468,7 @@ function FilesPageContent() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ marginTop: 0, marginBottom: 0 }}>Buat Kategori</h3>
                 <button className="btn btnSecondary" type="button" onClick={() => setCategoryModalOpen(false)} disabled={creatingCategory}>
-                  Close
+                  Tutup
                 </button>
               </div>
 
@@ -2217,10 +2495,10 @@ function FilesPageContent() {
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button className="btn btnSecondary" type="button" onClick={() => setCategoryModalOpen(false)} disabled={creatingCategory}>
-                  Cancel
+                  Batal
                 </button>
                 <button className="btn" type="button" onClick={submitCategoryModal} disabled={creatingCategory || !categoryModalName.trim()}>
-                  {creatingCategory ? 'Creating…' : 'Create'}
+                  {creatingCategory ? 'Membuat…' : 'Buat'}
                 </button>
               </div>
             </div>
@@ -2231,18 +2509,18 @@ function FilesPageContent() {
           <div className="modalOverlay" onClick={() => setTrashOpen(false)}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Trash</h3>
+                <h3 style={{ marginTop: 0, marginBottom: 0 }}>Tempat Sampah</h3>
                 <button className="btn btnSecondary" type="button" onClick={() => setTrashOpen(false)}>
-                  Close
+                  Tutup
                 </button>
               </div>
               <div style={{ height: 10 }} />
               <div style={{ color: 'var(--muted)' }}>
-                Items in trash are auto-deleted after {trashMeta?.retentionDays ?? 30} days.
+                Item di tempat sampah akan terhapus permanen setelah {trashMeta?.retentionDays ?? 30} hari.
               </div>
               <div style={{ marginTop: 6 }} className="quickPills">
                 <span className="quickPill">
-                  Total Trash <strong>{trashMeta?.total ?? 0}</strong>
+                  Total di Sampah <strong>{trashMeta?.total ?? 0}</strong>
                 </span>
               </div>
               <div style={{ height: 12 }} />
@@ -2251,15 +2529,15 @@ function FilesPageContent() {
                   <thead>
                     <tr>
                       <th>File</th>
-                      <th>Trashed At</th>
-                      <th>Action</th>
+                      <th>Waktu Hapus</th>
+                      <th>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {trashLoading ? (
                       <tr>
                         <td colSpan={3} style={{ color: '#9ca3af' }}>
-                          Loading...
+                          Memuat…
                         </td>
                       </tr>
                     ) : trashItems.length ? (
@@ -2276,7 +2554,7 @@ function FilesPageContent() {
                                 void restoreFromTrashById(it._id);
                               }}
                             >
-                              {restoreBusyId === it._id ? 'Restoring…' : 'Restore'}
+                              {restoreBusyId === it._id ? 'Memulihkan…' : 'Pulihkan'}
                             </button>
                           </td>
                         </tr>
@@ -2284,7 +2562,7 @@ function FilesPageContent() {
                     ) : (
                       <tr>
                         <td colSpan={3} style={{ color: '#9ca3af' }}>
-                          Trash is empty.
+                          Tempat sampah kosong.
                         </td>
                       </tr>
                     )}
@@ -2301,14 +2579,25 @@ function FilesPageContent() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ marginTop: 0, marginBottom: 0 }}>Detail Dokumen</h3>
                 <button className="btn btnSecondary" type="button" onClick={() => setDetailOpen(false)}>
-                  Close
+                  Tutup
                 </button>
               </div>
 
               <div style={{ height: 12 }} />
 
               <div style={{ fontWeight: 900, marginBottom: 6 }}>{detailItem.originalName}</div>
-              <div style={{ color: 'var(--muted)' }}>{(detailItem as unknown as { archiveNumber?: string }).archiveNumber || '-'}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ color: 'var(--muted)' }}>{(detailItem as unknown as { archiveNumber?: string }).archiveNumber || '-'}</div>
+                <button
+                  className="btn btnSecondary"
+                  type="button"
+                  onClick={() => copyWithToast('Nomor arsip', String((detailItem as unknown as { archiveNumber?: string }).archiveNumber ?? ''))}
+                  style={{ padding: '5px 10px' }}
+                  disabled={!String((detailItem as unknown as { archiveNumber?: string }).archiveNumber ?? '').trim()}
+                >
+                  Copy
+                </button>
+              </div>
 
               <div style={{ height: 12 }} />
 
@@ -2323,7 +2612,18 @@ function FilesPageContent() {
                 </div>
                 <div style={{ width: 200 }}>
                   <div style={{ color: 'var(--muted)', fontSize: 12 }}>Nomor Surat</div>
-                  <div style={{ fontWeight: 700 }}>{detailItem.docNumber || '-'}</div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div style={{ fontWeight: 700 }}>{detailItem.docNumber || '-'}</div>
+                    <button
+                      className="btn btnSecondary"
+                      type="button"
+                      onClick={() => copyWithToast('Nomor surat', String(detailItem.docNumber ?? ''))}
+                      style={{ padding: '5px 10px' }}
+                      disabled={!String(detailItem.docNumber ?? '').trim()}
+                    >
+                      Copy
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -2339,7 +2639,7 @@ function FilesPageContent() {
                   <div style={{ fontWeight: 700 }}>{detailItem.category || '-'}</div>
                 </div>
                 <div style={{ width: 220 }}>
-                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>Visibility</div>
+                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>Akses</div>
                   <div style={{ fontWeight: 700 }}>{itemVisibility(detailItem).toUpperCase()}</div>
                 </div>
                 <div style={{ width: 220 }}>
@@ -2348,14 +2648,25 @@ function FilesPageContent() {
                 </div>
                 <div style={{ width: 320 }}>
                   <div style={{ color: 'var(--muted)', fontSize: 12 }}>Google Drive</div>
-                  <div style={{ fontWeight: 700 }}>
-                    {detailItem.gdriveLink ? (
-                      <a href={detailItem.gdriveLink} target="_blank" rel="noreferrer">
-                        Open Link
-                      </a>
-                    ) : (
-                      '-'
-                    )}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ fontWeight: 700 }}>
+                      {detailItem.gdriveLink ? (
+                        <a href={detailItem.gdriveLink} target="_blank" rel="noreferrer">
+                          Buka Link
+                        </a>
+                      ) : (
+                        '-'
+                      )}
+                    </div>
+                    <button
+                      className="btn btnSecondary"
+                      type="button"
+                      onClick={() => copyWithToast('Link GDrive', String(detailItem.gdriveLink ?? ''))}
+                      style={{ padding: '5px 10px' }}
+                      disabled={!String(detailItem.gdriveLink ?? '').trim()}
+                    >
+                      Copy
+                    </button>
                   </div>
                 </div>
               </div>
@@ -2368,11 +2679,11 @@ function FilesPageContent() {
                   <div style={{ fontWeight: 700 }}>{detailItem.uploadedBy?.name || '-'}</div>
                 </div>
                 <div style={{ width: 220 }}>
-                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>Size</div>
+                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>Ukuran</div>
                   <div style={{ fontWeight: 700 }}>{Math.round(detailItem.size / 1024)} KB</div>
                 </div>
                 <div style={{ width: 260 }}>
-                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>Uploaded At</div>
+                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>Diunggah</div>
                   <div style={{ fontWeight: 700 }}>{new Date(detailItem.createdAt).toLocaleString()}</div>
                 </div>
               </div>
@@ -2388,7 +2699,7 @@ function FilesPageContent() {
                     openPreview(detailItem);
                   }}
                 >
-                  Preview
+                  Pratinjau
                 </button>
                 <button
                   className="btn btnSecondary"
@@ -2397,7 +2708,7 @@ function FilesPageContent() {
                     window.location.href = `/api/archive/${detailItem._id}`;
                   }}
                 >
-                  Download
+                  Unduh
                 </button>
                 <button
                   className="btn btnSecondary"
@@ -2407,7 +2718,7 @@ function FilesPageContent() {
                     void syncGdriveLink(detailItem);
                   }}
                 >
-                  {gdriveBusyId === detailItem._id ? 'Syncing GDrive…' : 'Get Link GDrive'}
+                  {gdriveBusyId === detailItem._id ? 'Sinkron GDrive…' : 'Ambil Link GDrive'}
                 </button>
                 {detailItem.gdriveLink ? (
                   <button
@@ -2418,7 +2729,7 @@ function FilesPageContent() {
                       openUnlinkConfirm(detailItem);
                     }}
                   >
-                    {gdriveUnlinkBusyId === detailItem._id ? 'Unlinking…' : 'Unlink GDrive'}
+                    {gdriveUnlinkBusyId === detailItem._id ? 'Unlink…' : 'Unlink GDrive'}
                   </button>
                 ) : null}
                 {detailItem._id ? (
@@ -2443,7 +2754,7 @@ function FilesPageContent() {
                       void openShare(detailItem);
                     }}
                   >
-                    Share
+                    Bagikan
                   </button>
                 ) : null}
               </div>
@@ -2455,7 +2766,7 @@ function FilesPageContent() {
           <div className="modalOverlay" onClick={() => {}}>
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
               <h3 style={{ marginTop: 0, marginBottom: 8 }}>
-                {gdriveBusyId ? 'Syncing to Google Drive…' : 'Unlinking from Google Drive…'}
+                {gdriveBusyId ? 'Sinkron ke Google Drive…' : 'Unlink dari Google Drive…'}
               </h3>
               <div style={{ color: 'var(--muted)' }}>
                 {gdriveWorkingItem?.originalName ? (
@@ -2469,7 +2780,7 @@ function FilesPageContent() {
               <div style={{ height: 12 }} />
               <div className="quickPills">
                 <span className="quickPill">
-                  Status <strong>{gdriveBusyId ? 'Syncing' : 'Unlinking'}</strong>
+                  Status <strong>{gdriveBusyId ? 'Sinkron' : 'Unlink'}</strong>
                 </span>
                 <span className="quickPill">
                   Jangan tutup tab <strong>sebelum selesai</strong>
@@ -2485,7 +2796,7 @@ function FilesPageContent() {
 
 export default function FilesPage() {
   return (
-    <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
+    <Suspense fallback={<div style={{ padding: 24 }}>Memuat…</div>}>
       <FilesPageContent />
     </Suspense>
   );

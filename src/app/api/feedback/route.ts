@@ -16,7 +16,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_FILES = 5;
 
 const CreateSchema = z.object({
-  category: z.enum(['kritik', 'saran', 'bug', 'fitur', 'lainnya']).default('saran'),
+  category: z.enum(['kritik', 'saran', 'bug', 'fitur', 'lainnya', 'kuisioner']).default('saran'),
   subject: z.string().min(3).max(200),
   message: z.string().min(5).max(4000),
   rating: z.number().int().min(1).max(5).nullable().optional()
