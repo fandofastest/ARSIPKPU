@@ -7,7 +7,7 @@ const envLocalPath = path.resolve(cwd, '.env.local');
 const envPath = path.resolve(cwd, '.env');
 const envFilePath = fs.existsSync(envLocalPath) ? envLocalPath : envPath;
 
-type FeedbackCategory = 'kritik' | 'saran' | 'bug' | 'fitur' | 'lainnya';
+type FeedbackCategory = 'kuisioner';
 type FeedbackStatus = 'new' | 'reviewed' | 'resolved';
 
 function hashStringToInt(input: string) {
@@ -82,50 +82,39 @@ async function main() {
 
   const SEED_PREFIX = '[SEED-QUIZ]';
   const seedSubjectRegex = new RegExp(`^${escapeRegex(SEED_PREFIX)}`);
-  const templates: Array<{
-    category: FeedbackCategory;
-    rating: number;
-    subject: string;
-    message: string;
-  }> = [
-    {
-      category: 'saran',
-      rating: 5,
-      subject: `${SEED_PREFIX} Pengalaman penggunaan aplikasi`,
-      message:
-        'Secara umum aplikasi sangat membantu untuk penyimpanan dan pencarian arsip. Saran kecil: tambahkan tombol “reset filter” di halaman Arsip, dan tampilkan ringkasan filter aktif agar pengguna tidak bingung saat hasil pencarian kosong.'
-    },
-    {
-      category: 'fitur',
-      rating: 5,
-      subject: `${SEED_PREFIX} Usulan fitur pencarian lanjutan`,
-      message:
-        'Mohon pertimbangkan fitur pencarian lanjutan (multi-filter) dengan opsi: rentang tanggal dokumen, unit pengirim/penerima, jenis dokumen, serta highlight kata kunci pada hasil. Ini akan sangat mempercepat temuan arsip saat kebutuhan mendesak.'
-    },
-    {
-      category: 'bug',
-      rating: 4,
-      subject: `${SEED_PREFIX} Perbaikan kecil pengalaman upload`,
-      message:
-        'Saat upload beberapa file sekaligus, akan lebih jelas jika ada indikator progress per file (mis. nama file + status “mengunggah/selesai”). Kalau upload gagal, mohon tampilkan alasan (ukuran terlalu besar/format tidak didukung) agar pengguna bisa memperbaiki tanpa coba-coba.'
-    },
-    {
-      category: 'kritik',
-      rating: 4,
-      subject: `${SEED_PREFIX} Konsistensi label & navigasi`,
-      message:
-        'Tampilan sudah rapi, namun beberapa label menu/kolom sebaiknya diseragamkan (misalnya istilah “Jenis Dokumen” vs “Type”). Konsistensi istilah memudahkan pelatihan pengguna baru dan mengurangi kesalahan input metadata.'
-    },
-    {
-      category: 'lainnya',
-      rating: 5,
-      subject: `${SEED_PREFIX} Kebutuhan panduan singkat`,
-      message:
-        'Panduan pengguna sangat membantu. Akan lebih baik jika ada versi ringkas “3 langkah cepat” (unggah → isi metadata → simpan) dan contoh pengisian nomor surat/tanggal untuk menghindari variasi penulisan yang membuat pencarian kurang akurat.'
-    }
-  ];
+  const subject = `${SEED_PREFIX} Kuisioner Pemahaman Penggunaan`;
+
+  const answerLevels = [
+    'Sangat paham',
+    'Cukup paham',
+    'Perlu panduan ulang singkat'
+  ] as const;
+  const easeLevels = [
+    'Sangat mudah',
+    'Cukup mudah',
+    'Kadang membingungkan'
+  ] as const;
+  const confusingParts = [
+    'Penentuan kategori/subkategori dan konsistensi penamaan',
+    'Perbedaan arsip DINAMIS vs STATIS dan implikasi retensi',
+    'Akses/visibility (public/private/shared) saat berbagi arsip',
+    'Pengisian metadata (nomor surat, unit, jenis dokumen) agar seragam'
+  ] as const;
+  const helpfulFeatures = [
+    'Pencarian cepat (nama/nomor surat/isi dokumen OCR)',
+    'Nomor arsip otomatis dan penamaan file standar',
+    'Audit log aktivitas untuk pelacakan',
+    'Panduan pengguna + tombol cetak/simpan PDF'
+  ] as const;
+  const improvementSuggestions = [
+    'Tambah contoh pengisian metadata (nomor surat & tanggal) di form upload',
+    'Tambah validasi/auto-suggestion kategori agar tidak terjadi variasi penulisan',
+    'Tampilkan indikator progress per file saat upload banyak dokumen',
+    'Buat “ringkasan filter aktif” dan tombol reset filter di halaman Arsip'
+  ] as const;
 
   let created = 0;
+  let updated = 0;
   let skipped = 0;
   let reviewedSeeded = 0;
 
@@ -137,28 +126,47 @@ async function main() {
       continue;
     }
 
-    const already = await Feedback.findOne({
+    const existingSeed = await Feedback.findOne({
       'submittedBy.userId': userId,
       subject: seedSubjectRegex
     })
       .select({ _id: 1 })
       .lean();
-    if (already) {
-      skipped += 1;
-      continue;
-    }
 
     const displayName = String(u.nama || u.name || 'Pengguna').trim() || 'Pengguna';
     const role = String(u.role || 'staff');
     const seed = hashStringToInt(`${userId}|${phone}|${role}`);
-    const tpl = pick(templates, seed);
     const status = deriveStatus(seed, Boolean(reviewer));
 
+    const overallRating = ((seed % 100) < 15 ? 4 : 5) as 4 | 5;
+    const a1 = pick(answerLevels, seed);
+    const a2 = pick(easeLevels, seed + 1);
+    const a3 = pick(confusingParts, seed + 2);
+    const a4 = pick(helpfulFeatures, seed + 3);
+    const a5 = pick(improvementSuggestions, seed + 4);
+
+    const message =
+      `Identitas:\n` +
+      `- Nama: ${displayName}\n` +
+      `- Role: ${role}\n` +
+      `- Kontak: ${phone}\n\n` +
+      `Kuisioner Pemahaman Penggunaan KPU Smart Archive:\n` +
+      `1) Seberapa paham alur unggah + pengisian metadata (kategori, nomor surat, tanggal, unit, jenis dokumen)?\n` +
+      `   Jawaban: ${a1}\n\n` +
+      `2) Seberapa mudah melakukan pencarian arsip (nama file/nomor surat/isi dokumen hasil OCR)?\n` +
+      `   Jawaban: ${a2}\n\n` +
+      `3) Bagian yang masih membingungkan:\n` +
+      `   Jawaban: ${a3}\n\n` +
+      `4) Fitur yang paling membantu:\n` +
+      `   Jawaban: ${a4}\n\n` +
+      `5) Saran perbaikan prioritas:\n` +
+      `   Jawaban: ${a5}\n`;
+
     const doc: Record<string, unknown> = {
-      category: tpl.category,
-      subject: tpl.subject,
-      message: `Nama: ${displayName}\nRole: ${role}\n\n${tpl.message}`,
-      rating: tpl.rating,
+      category: 'kuisioner' satisfies FeedbackCategory,
+      subject,
+      message,
+      rating: overallRating,
       status,
       attachments: [],
       submittedBy: {
@@ -175,11 +183,18 @@ async function main() {
       reviewedSeeded += 1;
     }
 
-    await Feedback.create(doc);
-    created += 1;
+    if (existingSeed && (existingSeed as { _id?: unknown })._id) {
+      await Feedback.updateOne({ _id: (existingSeed as { _id: unknown })._id }, { $set: doc });
+      updated += 1;
+    } else {
+      await Feedback.create(doc);
+      created += 1;
+    }
   }
 
-  console.log(`Seed feedback/quisioner: created=${created}, skipped=${skipped}, totalUsers=${users.length}, reviewedOrResolved=${reviewedSeeded}`);
+  console.log(
+    `Seed kuisioner: created=${created}, updated=${updated}, skipped=${skipped}, totalUsers=${users.length}, reviewedOrResolved=${reviewedSeeded}`
+  );
   process.exit(0);
 }
 
