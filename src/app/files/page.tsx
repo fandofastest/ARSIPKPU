@@ -5,6 +5,24 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
+import { DOC_KIND_OPTIONS, KPU_UNITS, ACCESS_LEVEL, ARCHIVE_TYPE } from '@/lib/archiveConstants';
+import {
+  LayoutGrid,
+  List,
+  FileText,
+  FileSpreadsheet,
+  FileImage,
+  File,
+  Eye,
+  Download,
+  Share2,
+  Edit3,
+  Trash2,
+  Sparkles,
+  Calendar,
+  Tag,
+  Clock
+} from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,6 +124,43 @@ type UploadFileOverride = {
   visibility: 'inherit' | 'public' | 'private';
 };
 
+function getFileBadgeStyle(filename: string, mimeType?: string) {
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
+  if (ext === 'pdf' || mimeType?.includes('pdf')) {
+    return {
+      bg: 'bg-red-500/10 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/50',
+      icon: FileText,
+      label: 'PDF'
+    };
+  }
+  if (['doc', 'docx'].includes(ext) || mimeType?.includes('word')) {
+    return {
+      bg: 'bg-blue-500/10 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/50',
+      icon: FileText,
+      label: 'DOCX'
+    };
+  }
+  if (['xls', 'xlsx', 'csv'].includes(ext) || mimeType?.includes('spreadsheet') || mimeType?.includes('excel')) {
+    return {
+      bg: 'bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50',
+      icon: FileSpreadsheet,
+      label: 'EXCEL'
+    };
+  }
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) || mimeType?.startsWith('image/')) {
+    return {
+      bg: 'bg-purple-500/10 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800/50',
+      icon: FileImage,
+      label: 'GAMBAR'
+    };
+  }
+  return {
+    bg: 'bg-slate-500/10 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+    icon: File,
+    label: ext.toUpperCase() || 'FILE'
+  };
+}
+
 function categoryLabel(c: CategoryItem) {
   return (c.path && c.path.trim()) || c.name;
 }
@@ -156,6 +211,7 @@ function FilesPageContent() {
 
   const [me, setMe] = useState<{ userId: string; phone: string; role: string } | null>(null);
 
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [q, setQ] = useState('');
   const [fDocNumber, setFDocNumber] = useState('');
   const [fDocFrom, setFDocFrom] = useState('');
@@ -187,9 +243,18 @@ function FilesPageContent() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadSubject, setUploadSubject] = useState('');
   const [uploadDocNumber, setUploadDocNumber] = useState('');
   const [uploadDocDate, setUploadDocDate] = useState('');
-  const [uploadDocKind, setUploadDocKind] = useState('');
+  const [uploadDocKind, setUploadDocKind] = useState<string>('Surat Keputusan');
+  const [uploadUnit, setUploadUnit] = useState<string>('Subbagian Hukum dan SDM');
+  const [uploadUnitSender, setUploadUnitSender] = useState('');
+  const [uploadUnitRecipient, setUploadUnitRecipient] = useState('');
+  const [uploadShowAdvanced, setUploadShowAdvanced] = useState(false);
+  const [uploadAccessLevel, setUploadAccessLevel] = useState<'BIASA' | 'TERBATAS' | 'RAHASIA'>('BIASA');
+  const [uploadArchiveType, setUploadArchiveType] = useState<'DINAMIS' | 'STATIS'>('DINAMIS');
+  const [uploadYear, setUploadYear] = useState<string>(String(new Date().getFullYear()));
+  const [uploadRetention, setUploadRetention] = useState<string>('5');
   const [uploadCategory, setUploadCategory] = useState('');
   const [uploadRootCategorySlug, setUploadRootCategorySlug] = useState('');
   const [uploadDesc, setUploadDesc] = useState('');
@@ -720,14 +785,23 @@ function FilesPageContent() {
       form.append('file', f);
     }
     form.append('title', uploadTitle);
+    if (uploadSubject) form.append('subject', uploadSubject);
     form.append('docNumber', uploadDocNumber);
     form.append('docDate', uploadDocDate.trim() ? uploadDocDate.trim() : nowLocalDateTimeValue());
     form.append('docDateSource', uploadDocDate.trim() ? 'user' : 'default');
     form.append('docKind', uploadDocKind);
+    form.append('type', uploadDocKind);
+    form.append('unit', uploadUnit);
+    if (uploadUnitSender) form.append('unitSender', uploadUnitSender);
+    if (uploadUnitRecipient) form.append('unitRecipient', uploadUnitRecipient);
     form.append('category', uploadCategory);
     form.append('description', uploadDesc);
+    form.append('year', uploadYear);
+    form.append('retention', uploadRetention);
+    form.append('accessLevel', uploadAccessLevel);
+    form.append('archiveType', uploadArchiveType);
     form.append('tags', uploadTags);
-    if (uploadPrivate) form.append('private', '1');
+    if (uploadPrivate || uploadAccessLevel === 'RAHASIA') form.append('private', '1');
     if (uploadHybridEnabled && uploadOverrides.length === uploadFiles.length) {
       const cleaned = uploadOverrides
         .map((o, idx) => ({
@@ -1410,6 +1484,163 @@ function FilesPageContent() {
     );
   }
 
+  function GridView() {
+    if (loading) {
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 my-4">
+          {Array.from({ length: 8 }).map((_, idx) => (
+            <div key={`grid-sk-${idx}`} className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#131c2e] space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="skeleton w-12 h-6 rounded-lg" />
+                <div className="skeleton w-16 h-5 rounded-full" />
+              </div>
+              <div className="skeleton w-3/4 h-5 rounded-md" />
+              <div className="skeleton w-full h-4 rounded-md" />
+              <div className="pt-2 flex gap-2">
+                <div className="skeleton w-1/2 h-8 rounded-xl" />
+                <div className="skeleton w-1/2 h-8 rounded-xl" />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (!items.length) return null;
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 my-4">
+        {items.map((it) => {
+          const badge = getFileBadgeStyle(it.originalName, it.mimeType);
+          const BadgeIcon = badge.icon;
+          const canEdit = canManageItem(it, me);
+          const accessLvl = (it as any).accessLevel || (it.isPublic === false ? 'RAHASIA' : 'BIASA');
+
+          return (
+            <div
+              key={it._id}
+              className="group bg-white dark:bg-[#131c2e] border border-slate-200/80 dark:border-slate-800 hover:border-red-500/50 dark:hover:border-red-500/50 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between"
+            >
+              <div>
+                {/* Top Row: File Format Badge & Access Level */}
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1.5 ${badge.bg}`}>
+                    <BadgeIcon className="w-3.5 h-3.5" />
+                    <span>{badge.label}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      accessLvl === 'RAHASIA'
+                        ? 'bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800'
+                        : accessLvl === 'TERBATAS'
+                        ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800'
+                        : 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800'
+                    }`}>
+                      {accessLvl === 'RAHASIA' ? '🔴 RAHASIA' : accessLvl === 'TERBATAS' ? '🟡 TERBATAS' : '🟢 BIASA'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Title */}
+                <h3
+                  onClick={() => openDetail(it)}
+                  className="font-bold text-sm text-slate-900 dark:text-slate-100 group-hover:text-red-600 dark:group-hover:text-red-400 line-clamp-2 cursor-pointer transition-colors mb-1.5"
+                  title={it.title || it.originalName}
+                >
+                  {it.title?.trim() ? it.title : it.originalName}
+                </h3>
+
+                {/* Doc Number & Date */}
+                <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 mb-3">
+                  {it.docNumber && (
+                    <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
+                      <Tag className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      <span className="truncate">{it.docNumber}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 text-[11px]">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-slate-400" />
+                      {new Date(it.docDate || it.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </span>
+                    <span>·</span>
+                    <span>{Math.round(it.size / 1024)} KB</span>
+                  </div>
+                </div>
+
+                {/* Badges: docKind & Unit */}
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {it.docKind && (
+                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                      {it.docKind}
+                    </span>
+                  )}
+                  {it.unitSender && (
+                    <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-[10px] font-medium text-slate-500 dark:text-slate-400 truncate max-w-[150px]">
+                      {it.unitSender}
+                    </span>
+                  )}
+                </div>
+
+                {/* OCR snippet if searching */}
+                {q.trim() && it.searchSnippet && (
+                  <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 text-[11px] text-amber-900 dark:text-amber-200 mb-3">
+                    <span className="font-bold">OCR: </span>
+                    {renderSnippet(it.searchSnippet, q)}
+                  </div>
+                )}
+              </div>
+
+              {/* Card Footer Actions */}
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => openPreview(it)}
+                  className="flex-1 py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <Eye className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Pratinjau</span>
+                </button>
+
+                <a
+                  href={`/api/archive/${it._id}`}
+                  className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
+                  title="Unduh berkas"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </a>
+
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => openEdit(it)}
+                    className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
+                    title="Edit Metadata"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
+                {me && (me.role === 'admin' || isOwnerItem(it, me)) && (
+                  <button
+                    type="button"
+                    onClick={() => openDeleteConfirm(it)}
+                    className="p-1.5 rounded-xl border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 transition-colors"
+                    title="Hapus ke tempat sampah"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
   function PaginationBar() {
     const total = meta?.total ?? 0;
     const totalPages = meta?.totalPages ?? 1;
@@ -1632,16 +1863,79 @@ function FilesPageContent() {
 
           <div style={{ height: 12 }} />
 
-          <div className="quickPills">
-            <span className="quickPill">
-              Total <strong>{meta?.total ?? 0}</strong>
+          {/* Quick Filter Pills Bar */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none mb-3">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pr-2">
+              <Sparkles className="w-3.5 h-3.5 text-red-600" /> Filter Cepat:
             </span>
-            <span className="quickPill">
-              Halaman <strong>{page}</strong> / <strong>{meta?.totalPages ?? 1}</strong>
-            </span>
-            <span className="quickPill">
-              Per Halaman <strong>{limit}</strong>
-            </span>
+            {[
+              { label: 'Semua', filter: () => { setFDocKind(''); resetFilters(); } },
+              { label: 'Surat Keputusan', filter: () => setFDocKind('Surat Keputusan') },
+              { label: 'Berita Acara', filter: () => setFDocKind('Berita Acara') },
+              { label: 'Surat Dinas', filter: () => setFDocKind('Surat Dinas') },
+              { label: 'Nota Dinas', filter: () => setFDocKind('Nota Dinas') },
+              { label: 'Laporan', filter: () => setFDocKind('Laporan') },
+            ].map((pill) => {
+              const isActive = fDocKind === pill.label || (!fDocKind && pill.label === 'Semua');
+              return (
+                <button
+                  key={pill.label}
+                  type="button"
+                  onClick={pill.filter}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 border ${
+                    isActive
+                      ? 'bg-red-600 text-white border-red-600 shadow-sm shadow-red-500/20'
+                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-red-400'
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+            <div className="quickPills" style={{ margin: 0 }}>
+              <span className="quickPill">
+                Total <strong>{meta?.total ?? 0}</strong>
+              </span>
+              <span className="quickPill">
+                Halaman <strong>{page}</strong> / <strong>{meta?.totalPages ?? 1}</strong>
+              </span>
+              <span className="quickPill">
+                Per Halaman <strong>{limit}</strong>
+              </span>
+            </div>
+
+            {/* View Mode Switcher Toggle */}
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  viewMode === 'grid'
+                    ? 'bg-white dark:bg-slate-900 text-red-600 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Tampilan Kartu (Grid)"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Kartu</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  viewMode === 'table'
+                    ? 'bg-white dark:bg-slate-900 text-red-600 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Tampilan Tabel (List)"
+              >
+                <List className="w-3.5 h-3.5" />
+                <span>Tabel</span>
+              </button>
+            </div>
           </div>
 
           <div style={{ height: 12 }} />
@@ -1663,8 +1957,7 @@ function FilesPageContent() {
             </div>
           ) : null}
 
-          <DesktopTable />
-          <MobileList />
+          {viewMode === 'grid' ? <GridView /> : <><DesktopTable /><MobileList /></>}
 
           {items.length === 0 && !loading ? (
             <div className="card" style={{ padding: 32, textAlign: 'center' }}>
@@ -1743,21 +2036,45 @@ function FilesPageContent() {
 
               <div className="row" style={{ alignItems: 'end' }}>
                 <label style={{ flex: 1, minWidth: 220 }}>
-                  Jenis Dokumen
-                  <input
+                  Jenis Naskah Dinas (docKind) *
+                  <select
                     className="input"
                     value={uploadDocKind}
                     onChange={(e) => setUploadDocKind(e.target.value)}
-                    placeholder="Surat Tugas / SPPD…"
-                  />
+                  >
+                    {DOC_KIND_OPTIONS.map((k) => (
+                      <option key={k} value={k}>
+                        {k}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label style={{ flex: 1, minWidth: 220 }}>
-                  Nomor Surat
+                  Unit Pencipta / Pengolah (unit) *
+                  <select
+                    className="input"
+                    value={uploadUnit}
+                    onChange={(e) => setUploadUnit(e.target.value)}
+                  >
+                    {KPU_UNITS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div style={{ height: 12 }} />
+
+              <div className="row" style={{ alignItems: 'end' }}>
+                <label style={{ flex: 1, minWidth: 220 }}>
+                  Perihal / Subjek
                   <input
                     className="input"
-                    value={uploadDocNumber}
-                    onChange={(e) => setUploadDocNumber(e.target.value)}
-                    placeholder="Nomor surat…"
+                    value={uploadSubject}
+                    onChange={(e) => setUploadSubject(e.target.value)}
+                    placeholder="Perihal naskah dinas…"
                   />
                 </label>
                 <label style={{ flex: 1, minWidth: 220 }}>
@@ -1766,10 +2083,67 @@ function FilesPageContent() {
                     className="input"
                     value={uploadTags}
                     onChange={(e) => setUploadTags(e.target.value)}
-                    placeholder="penting, 2026"
+                    placeholder="pemilu, 2026"
                   />
                 </label>
               </div>
+
+              <div style={{ height: 12 }} />
+
+              <label style={{ display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer', userSelect: 'none' }}>
+                <input
+                  type="checkbox"
+                  checked={uploadShowAdvanced}
+                  onChange={(e) => setUploadShowAdvanced(e.target.checked)}
+                />
+                <span style={{ fontWeight: 600 }}>Tambahkan Nomor, Tanggal & Instansi Pengirim/Penerima (Opsional)</span>
+              </label>
+
+              {uploadShowAdvanced && (
+                <div style={{ marginTop: 10, padding: 12, border: '1px solid var(--border)', borderRadius: 12, background: 'var(--panel2)' }}>
+                  <div className="row" style={{ alignItems: 'end' }}>
+                    <label style={{ flex: 1, minWidth: 200 }}>
+                      Nomor Surat
+                      <input
+                        className="input"
+                        value={uploadDocNumber}
+                        onChange={(e) => setUploadDocNumber(e.target.value)}
+                        placeholder="Contoh: 123/KPU/KOTA-DUMAI/2026"
+                      />
+                    </label>
+                    <label style={{ flex: 1, minWidth: 200 }}>
+                      Tanggal Surat
+                      <input
+                        className="input"
+                        type="datetime-local"
+                        value={uploadDocDate}
+                        onChange={(e) => setUploadDocDate(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <div style={{ height: 8 }} />
+                  <div className="row" style={{ alignItems: 'end' }}>
+                    <label style={{ flex: 1, minWidth: 200 }}>
+                      Instansi / Pengirim (unitSender)
+                      <input
+                        className="input"
+                        value={uploadUnitSender}
+                        onChange={(e) => setUploadUnitSender(e.target.value)}
+                        placeholder="KPU Riau / Bawaslu…"
+                      />
+                    </label>
+                    <label style={{ flex: 1, minWidth: 200 }}>
+                      Instansi / Penerima (unitRecipient)
+                      <input
+                        className="input"
+                        value={uploadUnitRecipient}
+                        onChange={(e) => setUploadUnitRecipient(e.target.value)}
+                        placeholder="Ketua KPU Kota Dumai…"
+                      />
+                    </label>
+                  </div>
+                </div>
+              )}
 
               <div style={{ height: 12 }} />
 
@@ -1844,6 +2218,67 @@ function FilesPageContent() {
                     {creatingCategory ? 'Membuat…' : '+ Kategori'}
                   </button>
                 ) : null}
+              </div>
+
+              <div style={{ height: 12 }} />
+
+              <div className="row" style={{ alignItems: 'end' }}>
+                <label style={{ flex: 1, minWidth: 150 }}>
+                  Level Akses *
+                  <select
+                    className="input"
+                    value={uploadAccessLevel}
+                    onChange={(e) => setUploadAccessLevel(e.target.value as 'BIASA' | 'TERBATAS' | 'RAHASIA')}
+                  >
+                    {ACCESS_LEVEL.map((lvl) => (
+                      <option key={lvl} value={lvl}>
+                        {lvl === 'BIASA' ? '🟢 BIASA' : lvl === 'TERBATAS' ? '🟡 TERBATAS' : '🔴 RAHASIA'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ flex: 1, minWidth: 150 }}>
+                  Tipe Arsip
+                  <select
+                    className="input"
+                    value={uploadArchiveType}
+                    onChange={(e) => {
+                      const val = e.target.value as 'DINAMIS' | 'STATIS';
+                      setUploadArchiveType(val);
+                      if (val === 'STATIS') {
+                        setUploadRetention('0');
+                      } else {
+                        setUploadRetention('5');
+                      }
+                    }}
+                  >
+                    {ARCHIVE_TYPE.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ flex: 1, minWidth: 120 }}>
+                  Tahun Arsip
+                  <input
+                    className="input"
+                    type="number"
+                    value={uploadYear}
+                    onChange={(e) => setUploadYear(e.target.value)}
+                  />
+                </label>
+                <label style={{ flex: 1, minWidth: 120 }}>
+                  Retensi (Tahun)
+                  <input
+                    className="input"
+                    type={uploadArchiveType === 'STATIS' ? 'text' : 'number'}
+                    disabled={uploadArchiveType === 'STATIS'}
+                    value={uploadArchiveType === 'STATIS' ? 'Permanen' : uploadRetention}
+                    onChange={(e) => setUploadRetention(e.target.value)}
+                    style={{ opacity: uploadArchiveType === 'STATIS' ? 0.6 : 1 }}
+                  />
+                </label>
               </div>
 
               <div style={{ height: 12 }} />

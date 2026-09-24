@@ -5,6 +5,30 @@ export type AccessLevel = (typeof ACCESS_LEVEL)[number];
 export const ARCHIVE_TYPE = ['DINAMIS', 'STATIS'] as const;
 export type ArchiveType = (typeof ARCHIVE_TYPE)[number];
 
+// === KPU STANDARD ARCHIVE CONSTANTS ===
+export const DOC_KIND_OPTIONS = [
+  'Surat Keputusan',
+  'Berita Acara',
+  'Surat Dinas',
+  'Nota Dinas',
+  'Peraturan',
+  'Surat Edaran',
+  'Instruksi',
+  'Laporan',
+  'Risalah Rapat',
+  'Dokumen Lainnya'
+] as const;
+
+export const KPU_UNITS = [
+  'Subbagian Hukum dan SDM',
+  'Subbagian Teknis Penyelenggaraan Pemilu, Partisipasi & Hubungan Masyarakat',
+  'Subbagian Perencanaan, Data dan Informasi',
+  'Subbagian Keuangan, Umum dan Logistik',
+  'Sekretariat KPU Kota Dumai',
+  'Komisioner / Pimpinan KPU',
+  'Instansi Eksternal / Pemko Dumai'
+] as const;
+
 // === CATEGORY STRUCTURE (single source of truth) ===
 export type SubcategoryDef = { name: string; code: string };
 export type CategoryDef = { name: string; code: string; subcategories: SubcategoryDef[] };
