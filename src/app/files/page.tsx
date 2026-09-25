@@ -1446,10 +1446,6 @@ function FilesPageContent() {
                       <div className="fileDetailValue">{it.docKind || it.type || '-'}</div>
                     </div>
                     <div>
-                      <div className="fileDetailLabel">Nomor Surat</div>
-                      <div className="fileDetailValue">{it.docNumber || '-'}</div>
-                    </div>
-                    <div>
                       <div className="fileDetailLabel">Akses</div>
                       <div className="fileDetailValue" style={{ textTransform: 'capitalize' }}>
                         {visibility} {visibility === 'shared' ? `(${it.sharedWith?.length || 0} users)` : ''}
@@ -3139,24 +3135,9 @@ function FilesPageContent() {
                   <div style={{ color: 'var(--muted)', fontSize: 12 }}>Judul Dokumen</div>
                   <div style={{ fontWeight: 700 }}>{detailItem.title || detailItem.subject || '-'}</div>
                 </div>
-                <div style={{ width: 200 }}>
+                <div style={{ width: 240 }}>
                   <div style={{ color: 'var(--muted)', fontSize: 12 }}>Tanggal Surat</div>
                   <div style={{ fontWeight: 700 }}>{detailItem.docDate ? new Date(detailItem.docDate).toLocaleString() : '-'}</div>
-                </div>
-                <div style={{ width: 200 }}>
-                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>Nomor Surat</div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <div style={{ fontWeight: 700 }}>{detailItem.docNumber || '-'}</div>
-                    <button
-                      className="btn btnSecondary"
-                      type="button"
-                      onClick={() => copyWithToast('Nomor surat', String(detailItem.docNumber ?? ''))}
-                      style={{ padding: '5px 10px' }}
-                      disabled={!String(detailItem.docNumber ?? '').trim()}
-                    >
-                      Copy
-                    </button>
-                  </div>
                 </div>
               </div>
 
