@@ -21,7 +21,10 @@ import {
   Sparkles,
   Calendar,
   Tag,
-  Clock
+  Clock,
+  MoreVertical,
+  MoreHorizontal,
+  Cloud
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -191,6 +194,7 @@ function isOwnerItem(it: ArchiveItem, me: { userId: string; phone: string; role:
 
 function canManageItem(it: ArchiveItem, me: { userId: string; phone: string; role: string } | null) {
   if (!me || me.role === 'viewer') return false;
+  if (me.role === 'admin') return true;
   const isOwner = isOwnerItem(it, me);
   if (isOwner) return true;
   return itemShareRole(it, me.userId) === 'editor';
@@ -1255,6 +1259,25 @@ function FilesPageContent() {
     setUnlinkConfirmOpen(true);
   }
 
+  function toggleItemMenu(it: ArchiveItem, e: React.MouseEvent<HTMLButtonElement>) {
+    e.stopPropagation();
+    if (openMenu?.id === it._id) {
+      setOpenMenu(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menuWidth = 200;
+    let targetX = rect.left;
+    if (rect.left + menuWidth > window.innerWidth - 12) {
+      targetX = Math.max(12, rect.right - menuWidth);
+    }
+    let targetY = rect.bottom + 6;
+    if (targetY + 300 > window.innerHeight && rect.top > 300) {
+      targetY = rect.top - 280;
+    }
+    setOpenMenu({ id: it._id, x: Math.round(targetX), y: Math.round(targetY) });
+  }
+
   const gdriveWorkingId = gdriveBusyId || gdriveUnlinkBusyId;
   const gdriveWorkingItem = gdriveWorkingId
     ? items.find((x) => x._id === gdriveWorkingId) || (detailItem && detailItem._id === gdriveWorkingId ? detailItem : null)
@@ -1333,13 +1356,8 @@ function FilesPageContent() {
                       <button
                         className="btn btnSecondary"
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                          const nextId = openMenu?.id === it._id ? null : it._id;
-                          if (nextId) setOpenMenu({ id: it._id, x: Math.round(rect.left), y: Math.round(rect.bottom + 8) });
-                          else setOpenMenu(null);
-                        }}
+                        onClick={(e) => toggleItemMenu(it, e)}
+                        title="Menu Tindakan"
                       >
                         ⋯
                       </button>
@@ -1464,15 +1482,36 @@ function FilesPageContent() {
                         </button>
                       </>
                     )}
-                    {me && (me.role === 'admin' || isOwnerItem(it, me)) && (
-                      <button className="btn btnSecondary" style={{ color: 'var(--danger)' }} onClick={() => openDeleteConfirm(it)}>
-                        Hapus
+                    {canEdit && (
+                      <button
+                        className="btn btnSecondary"
+                        type="button"
+                        disabled={gdriveBusyId === it._id || gdriveUnlinkBusyId === it._id}
+                        onClick={() => void syncGdriveLink(it)}
+                      >
+                        {gdriveBusyId === it._id ? 'Sinkron GDrive…' : 'Ambil Link GDrive'}
                       </button>
                     )}
                     {it.gdriveLink && (
                       <a href={it.gdriveLink} target="_blank" rel="noreferrer" className="btn btnSecondary">
                         Google Drive
                       </a>
+                    )}
+                    {canEdit && it.gdriveLink && (
+                      <button
+                        className="btn btnSecondary"
+                        type="button"
+                        style={{ color: 'var(--danger)' }}
+                        disabled={gdriveUnlinkBusyId === it._id || gdriveBusyId === it._id}
+                        onClick={() => openUnlinkConfirm(it)}
+                      >
+                        {gdriveUnlinkBusyId === it._id ? 'Unlink…' : 'Unlink GDrive'}
+                      </button>
+                    )}
+                    {me && (me.role === 'admin' || isOwnerItem(it, me)) && (
+                      <button className="btn btnSecondary" style={{ color: 'var(--danger)' }} onClick={() => openDeleteConfirm(it)}>
+                        Hapus
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1514,6 +1553,7 @@ function FilesPageContent() {
           const badge = getFileBadgeStyle(it.originalName, it.mimeType);
           const BadgeIcon = badge.icon;
           const canEdit = canManageItem(it, me);
+          const canDelete = (me?.role === 'admin' || isOwnerItem(it, me)) && me?.role !== 'viewer';
           const accessLvl = (it as any).accessLevel || (it.isPublic === false ? 'RAHASIA' : 'BIASA');
 
           return (
@@ -1522,7 +1562,7 @@ function FilesPageContent() {
               className="group bg-white dark:bg-[#131c2e] border border-slate-200/80 dark:border-slate-800 hover:border-red-500/50 dark:hover:border-red-500/50 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between"
             >
               <div>
-                {/* Top Row: File Format Badge & Access Level */}
+                {/* Top Row: File Format Badge & Access Level & Action Menu */}
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <div className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1.5 ${badge.bg}`}>
                     <BadgeIcon className="w-3.5 h-3.5" />
@@ -1530,6 +1570,20 @@ function FilesPageContent() {
                   </div>
 
                   <div className="flex items-center gap-1.5">
+                    {it.gdriveLink && (
+                      <a
+                        href={it.gdriveLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-[10px] font-semibold hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors"
+                        title="Tersinkron ke Google Drive (klik untuk membuka)"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Cloud className="w-3 h-3" />
+                        <span>GDrive</span>
+                      </a>
+                    )}
+
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                       accessLvl === 'RAHASIA'
                         ? 'bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-800'
@@ -1539,6 +1593,17 @@ function FilesPageContent() {
                     }`}>
                       {accessLvl === 'RAHASIA' ? '🔴 RAHASIA' : accessLvl === 'TERBATAS' ? '🟡 TERBATAS' : '🟢 BIASA'}
                     </span>
+
+                    <div className="menuWrap" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={(e) => toggleItemMenu(it, e)}
+                        className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
+                        title="Menu Tindakan"
+                      >
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1594,11 +1659,12 @@ function FilesPageContent() {
               </div>
 
               {/* Card Footer Actions */}
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-1.5">
                 <button
                   type="button"
                   onClick={() => openPreview(it)}
-                  className="flex-1 py-1.5 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1.5 transition-colors"
+                  className="flex-1 py-1.5 px-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-1 transition-colors"
+                  title="Pratinjau Berkas"
                 >
                   <Eye className="w-3.5 h-3.5 text-slate-500" />
                   <span>Pratinjau</span>
@@ -1623,7 +1689,7 @@ function FilesPageContent() {
                   </button>
                 )}
 
-                {me && (me.role === 'admin' || isOwnerItem(it, me)) && (
+                {canDelete && (
                   <button
                     type="button"
                     onClick={() => openDeleteConfirm(it)}
@@ -1633,6 +1699,17 @@ function FilesPageContent() {
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
+
+                <div className="menuWrap" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    onClick={(e) => toggleItemMenu(it, e)}
+                    className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
+                    title="Semua Menu & Tindakan"
+                  >
+                    <MoreHorizontal className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -2604,8 +2681,8 @@ function FilesPageContent() {
                   const it = items.find((x) => x._id === openMenu.id);
                   if (!it) return null;
                   const canEdit = canManageItem(it, me);
-                  const canDelete = isOwnerItem(it, me) && me?.role !== 'viewer';
-                  const canShare = isOwnerItem(it, me) && me?.role !== 'viewer';
+                  const canDelete = (me?.role === 'admin' || isOwnerItem(it, me)) && me?.role !== 'viewer';
+                  const canShare = (me?.role === 'admin' || isOwnerItem(it, me)) && me?.role !== 'viewer';
                   return (
                     <>
                       <button
@@ -2617,6 +2694,16 @@ function FilesPageContent() {
                         }}
                       >
                         Pratinjau
+                      </button>
+                      <button
+                        className="menuItem"
+                        type="button"
+                        onClick={() => {
+                          openDetail(it);
+                          setOpenMenu(null);
+                        }}
+                      >
+                        Detail Lengkap
                       </button>
                       <a
                         className="menuItem"
@@ -2657,6 +2744,7 @@ function FilesPageContent() {
                         <button
                           className="menuItem"
                           type="button"
+                          style={{ color: 'var(--danger)' }}
                           disabled={gdriveUnlinkBusyId === it._id || gdriveBusyId === it._id}
                           onClick={() => {
                             openUnlinkConfirm(it);
@@ -2666,43 +2754,42 @@ function FilesPageContent() {
                           {gdriveUnlinkBusyId === it._id ? 'Unlink…' : 'Unlink GDrive'}
                         </button>
                       ) : null}
+                      {canShare ? (
+                        <button
+                          className="menuItem"
+                          type="button"
+                          onClick={() => {
+                            void openShare(it);
+                            setOpenMenu(null);
+                          }}
+                        >
+                          Bagikan
+                        </button>
+                      ) : null}
                       {canEdit ? (
-                        <>
-                          {canShare ? (
-                            <button
-                              className="menuItem"
-                              type="button"
-                              onClick={() => {
-                                void openShare(it);
-                                setOpenMenu(null);
-                              }}
-                            >
-                              Bagikan
-                            </button>
-                          ) : null}
-                          <button
-                            className="menuItem"
-                            type="button"
-                            onClick={() => {
-                              openEdit(it);
-                              setOpenMenu(null);
-                            }}
-                          >
-                            Edit
-                          </button>
-                          {canDelete ? (
-                            <button
-                              className="menuItem"
-                              type="button"
-                              onClick={() => {
-                                openDeleteConfirm(it);
-                                setOpenMenu(null);
-                              }}
-                            >
-                              Hapus
-                            </button>
-                          ) : null}
-                        </>
+                        <button
+                          className="menuItem"
+                          type="button"
+                          onClick={() => {
+                            openEdit(it);
+                            setOpenMenu(null);
+                          }}
+                        >
+                          Edit
+                        </button>
+                      ) : null}
+                      {canDelete ? (
+                        <button
+                          className="menuItem"
+                          type="button"
+                          style={{ color: 'var(--danger)' }}
+                          onClick={() => {
+                            openDeleteConfirm(it);
+                            setOpenMenu(null);
+                          }}
+                        >
+                          Hapus
+                        </button>
                       ) : null}
                     </>
                   );
