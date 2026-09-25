@@ -2,50 +2,101 @@ import { readFile } from 'node:fs/promises';
 import { SignJWT } from 'jose';
 
 import { getAbsolutePath } from '@/lib/storage';
+import { dbConnect } from '@/lib/mongodb';
+import { GDriveSetting } from '@/models/GDriveSetting';
 
-type ShareMode = 'anyone' | 'domain' | 'private';
+export type ShareMode = 'anyone' | 'domain' | 'private';
 
-type GDriveUploadResult = {
+export type GDriveUploadResult = {
   fileId: string;
   webViewLink: string;
 };
 
-type AccessTokenSource = 'oauth' | 'service_account';
+export type AccessTokenSource = 'oauth' | 'service_account';
 
-function getRequiredEnv(name: string) {
-  const value = String(process.env[name] ?? '').trim();
-  if (!value) {
-    throw new Error(`Missing ${name}`);
+export type GDriveResolvedConfig = {
+  enabled: boolean;
+  authType: 'oauth' | 'service_account';
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+  folderId: string;
+  serviceAccountEmail: string;
+  privateKey: string;
+  shareMode: ShareMode;
+  shareDomain: string;
+};
+
+export async function getGDriveConfig(): Promise<GDriveResolvedConfig> {
+  let dbSetting: any = null;
+  try {
+    await dbConnect();
+    dbSetting = await GDriveSetting.findOne({ singletonKey: 'default' }).lean();
+  } catch {
+    // ignore db error, fallback to env
   }
-  return value;
+
+  if (dbSetting) {
+    return {
+      enabled: Boolean(dbSetting.enabled),
+      authType: (dbSetting.authType || 'oauth') as 'oauth' | 'service_account',
+      clientId: String(dbSetting.clientId || process.env.GDRIVE_OAUTH_CLIENT_ID || '').trim(),
+      clientSecret: String(dbSetting.clientSecret || process.env.GDRIVE_OAUTH_CLIENT_SECRET || '').trim(),
+      refreshToken: String(dbSetting.refreshToken || process.env.GDRIVE_OAUTH_REFRESH_TOKEN || '').trim(),
+      folderId: String(dbSetting.folderId || process.env.GDRIVE_FOLDER_ID || '').trim(),
+      serviceAccountEmail: String(dbSetting.serviceAccountEmail || process.env.GDRIVE_SERVICE_ACCOUNT_EMAIL || '').trim(),
+      privateKey: String(dbSetting.privateKey || process.env.GDRIVE_PRIVATE_KEY || '').trim(),
+      shareMode: (dbSetting.shareMode || process.env.GDRIVE_SHARE_MODE || 'anyone') as ShareMode,
+      shareDomain: String(dbSetting.shareDomain || process.env.GDRIVE_SHARE_DOMAIN || '').trim()
+    };
+  }
+
+  // If no DB setting exists yet, default enabled is FALSE so GDrive features are hidden until configured
+  const envEnabled = String(process.env.GDRIVE_ENABLED ?? '').trim().toLowerCase() === 'true';
+  return {
+    enabled: envEnabled,
+    authType: 'oauth',
+    clientId: String(process.env.GDRIVE_OAUTH_CLIENT_ID || '').trim(),
+    clientSecret: String(process.env.GDRIVE_OAUTH_CLIENT_SECRET || '').trim(),
+    refreshToken: String(process.env.GDRIVE_OAUTH_REFRESH_TOKEN || '').trim(),
+    folderId: String(process.env.GDRIVE_FOLDER_ID || '').trim(),
+    serviceAccountEmail: String(process.env.GDRIVE_SERVICE_ACCOUNT_EMAIL || '').trim(),
+    privateKey: String(process.env.GDRIVE_PRIVATE_KEY || '').trim(),
+    shareMode: (process.env.GDRIVE_SHARE_MODE || 'anyone') as ShareMode,
+    shareDomain: String(process.env.GDRIVE_SHARE_DOMAIN || '').trim()
+  };
 }
 
-function getShareMode(): ShareMode {
-  const raw = String(process.env.GDRIVE_SHARE_MODE ?? 'anyone').trim().toLowerCase();
-  if (raw === 'domain' || raw === 'private') return raw;
-  return 'anyone';
-}
+async function getGoogleAccessToken(explicitConfig?: GDriveResolvedConfig) {
+  const cfg = explicitConfig || (await getGDriveConfig());
+  if (!cfg.enabled && !explicitConfig) {
+    throw new Error('Integrasi Google Drive dinonaktifkan di pengaturan sistem.');
+  }
 
-async function getGoogleAccessToken() {
-  const hasOAuth =
-    String(process.env.GDRIVE_OAUTH_CLIENT_ID ?? '').trim() &&
-    String(process.env.GDRIVE_OAUTH_CLIENT_SECRET ?? '').trim() &&
-    String(process.env.GDRIVE_OAUTH_REFRESH_TOKEN ?? '').trim();
+  if (cfg.authType === 'service_account') {
+    return getGoogleAccessTokenFromServiceAccount(cfg);
+  }
 
+  const hasOAuth = Boolean(cfg.clientId && cfg.clientSecret && cfg.refreshToken);
   if (hasOAuth) {
-    return getGoogleAccessTokenFromOAuth();
+    return getGoogleAccessTokenFromOAuth(cfg);
   }
-  return getGoogleAccessTokenFromServiceAccount();
+
+  if (cfg.serviceAccountEmail && cfg.privateKey) {
+    return getGoogleAccessTokenFromServiceAccount(cfg);
+  }
+
+  throw new Error('Kredensial Google Drive belum lengkap (Client ID/Secret/Refresh Token atau Service Account).');
 }
 
-async function getGoogleAccessTokenFromOAuth() {
-  const clientId = getRequiredEnv('GDRIVE_OAUTH_CLIENT_ID');
-  const clientSecret = getRequiredEnv('GDRIVE_OAUTH_CLIENT_SECRET');
-  const refreshToken = getRequiredEnv('GDRIVE_OAUTH_REFRESH_TOKEN');
+async function getGoogleAccessTokenFromOAuth(cfg: GDriveResolvedConfig) {
+  if (!cfg.clientId || !cfg.clientSecret || !cfg.refreshToken) {
+    throw new Error('GDRIVE_OAUTH_CLIENT_ID, GDRIVE_OAUTH_CLIENT_SECRET, dan GDRIVE_OAUTH_REFRESH_TOKEN wajib diisi.');
+  }
   const body = new URLSearchParams();
-  body.set('client_id', clientId);
-  body.set('client_secret', clientSecret);
-  body.set('refresh_token', refreshToken);
+  body.set('client_id', cfg.clientId);
+  body.set('client_secret', cfg.clientSecret);
+  body.set('refresh_token', cfg.refreshToken);
   body.set('grant_type', 'refresh_token');
 
   const resp = await fetch('https://oauth2.googleapis.com/token', {
@@ -60,10 +111,12 @@ async function getGoogleAccessTokenFromOAuth() {
   return { accessToken: json.access_token, source: 'oauth' as AccessTokenSource };
 }
 
-async function getGoogleAccessTokenFromServiceAccount() {
-  const email = getRequiredEnv('GDRIVE_SERVICE_ACCOUNT_EMAIL');
-  const privateKeyRaw = getRequiredEnv('GDRIVE_PRIVATE_KEY');
-  const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
+async function getGoogleAccessTokenFromServiceAccount(cfg: GDriveResolvedConfig) {
+  if (!cfg.serviceAccountEmail || !cfg.privateKey) {
+    throw new Error('GDRIVE_SERVICE_ACCOUNT_EMAIL dan GDRIVE_PRIVATE_KEY wajib diisi.');
+  }
+  const email = cfg.serviceAccountEmail;
+  const privateKey = cfg.privateKey.replace(/\\n/g, '\n');
   const scope = String(process.env.GDRIVE_SCOPE ?? 'https://www.googleapis.com/auth/drive').trim();
 
   const now = Math.floor(Date.now() / 1000);
@@ -98,13 +151,12 @@ async function importPKCS8(key: string, alg: 'RS256') {
   return importPKCS8(key, alg);
 }
 
-async function ensureFilePermission(fileId: string, accessToken: string) {
-  const mode = getShareMode();
+async function ensureFilePermission(fileId: string, accessToken: string, mode: ShareMode, domain?: string) {
   if (mode === 'private') return;
 
   const payload: Record<string, string> =
     mode === 'domain'
-      ? { type: 'domain', role: 'reader', domain: getRequiredEnv('GDRIVE_SHARE_DOMAIN') }
+      ? { type: 'domain', role: 'reader', domain: domain || 'kpu.go.id' }
       : { type: 'anyone', role: 'reader' };
 
   const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions?supportsAllDrives=true`, {
@@ -130,6 +182,7 @@ async function ensureTargetFolderAccessible(folderId: string, accessToken: strin
   });
   const json = (await resp.json().catch(() => ({}))) as {
     id?: string;
+    name?: string;
     mimeType?: string;
     capabilities?: { canAddChildren?: boolean };
     error?: { message?: string };
@@ -142,8 +195,19 @@ async function ensureTargetFolderAccessible(folderId: string, accessToken: strin
     throw new Error('GDRIVE_FOLDER_ID is not a folder');
   }
   if (json.capabilities?.canAddChildren === false) {
-    throw new Error('Service account cannot upload into GDRIVE_FOLDER_ID (no write permission)');
+    throw new Error('Service account/OAuth cannot upload into GDRIVE_FOLDER_ID (no write permission)');
   }
+  return json;
+}
+
+export async function testGoogleDriveConnection(explicitConfig?: GDriveResolvedConfig) {
+  const cfg = explicitConfig || (await getGDriveConfig());
+  const token = await getGoogleAccessToken(cfg);
+  if (!cfg.folderId) {
+    return { ok: true, source: token.source, folderName: null, message: 'Autentikasi token berhasil (Folder ID belum diisi)' };
+  }
+  const folder = await ensureTargetFolderAccessible(cfg.folderId, token.accessToken, token.source);
+  return { ok: true, source: token.source, folderId: cfg.folderId, folderName: folder.name || null, message: 'Koneksi & akses folder Google Drive berhasil!' };
 }
 
 export async function uploadArchiveFileToGoogleDrive(args: {
@@ -151,11 +215,15 @@ export async function uploadArchiveFileToGoogleDrive(args: {
   originalName: string;
   mimeType: string;
 }) {
-  const folderId = String(process.env.GDRIVE_FOLDER_ID ?? '').trim();
-  if (!folderId) {
-    throw new Error('GDRIVE_FOLDER_ID is required');
+  const cfg = await getGDriveConfig();
+  if (!cfg.enabled) {
+    throw new Error('Integrasi Google Drive dinonaktifkan di pengaturan sistem.');
   }
-  const token = await getGoogleAccessToken();
+  const folderId = cfg.folderId;
+  if (!folderId) {
+    throw new Error('Folder ID Google Drive belum dikonfigurasi di pengaturan.');
+  }
+  const token = await getGoogleAccessToken(cfg);
   const accessToken = token.accessToken;
   await ensureTargetFolderAccessible(folderId, accessToken, token.source);
   const absPath = getAbsolutePath(args.relativePath);
@@ -183,7 +251,7 @@ export async function uploadArchiveFileToGoogleDrive(args: {
     throw new Error(msg);
   }
 
-  await ensureFilePermission(json.id, accessToken);
+  await ensureFilePermission(json.id, accessToken, cfg.shareMode, cfg.shareDomain);
 
   const webViewLink = String(json.webViewLink ?? `https://drive.google.com/file/d/${json.id}/view`).trim();
   const result: GDriveUploadResult = { fileId: json.id, webViewLink };
@@ -194,7 +262,8 @@ export async function deleteGoogleDriveFile(fileId: string) {
   const id = String(fileId ?? '').trim();
   if (!id) return;
 
-  const token = await getGoogleAccessToken();
+  const cfg = await getGDriveConfig();
+  const token = await getGoogleAccessToken(cfg);
   const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?supportsAllDrives=true`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token.accessToken}` }

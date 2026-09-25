@@ -294,6 +294,7 @@ function FilesPageContent() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [gdriveBusyId, setGdriveBusyId] = useState<string | null>(null);
   const [gdriveUnlinkBusyId, setGdriveUnlinkBusyId] = useState<string | null>(null);
+  const [gdriveEnabled, setGdriveEnabled] = useState(false);
   const [unlinkConfirmOpen, setUnlinkConfirmOpen] = useState(false);
   const [unlinkConfirmItem, setUnlinkConfirmItem] = useState<ArchiveItem | null>(null);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -580,6 +581,16 @@ function FilesPageContent() {
 
   useEffect(() => {
     loadCategories();
+    fetch('/api/settings/gdrive', { credentials: 'include' })
+      .then((r) => r.json() as Promise<{ success?: boolean; data?: { enabled?: boolean } }>)
+      .then((d) => {
+        if (d?.success && typeof d.data?.enabled === 'boolean') {
+          setGdriveEnabled(d.data.enabled);
+        }
+      })
+      .catch(() => {
+        // ignore
+      });
   }, []);
 
   useEffect(() => {
@@ -1482,7 +1493,7 @@ function FilesPageContent() {
                         </button>
                       </>
                     )}
-                    {canEdit && (
+                    {gdriveEnabled && canEdit && (
                       <button
                         className="btn btnSecondary"
                         type="button"
@@ -1492,12 +1503,12 @@ function FilesPageContent() {
                         {gdriveBusyId === it._id ? 'Sinkron GDrive…' : 'Ambil Link GDrive'}
                       </button>
                     )}
-                    {it.gdriveLink && (
+                    {gdriveEnabled && it.gdriveLink && (
                       <a href={it.gdriveLink} target="_blank" rel="noreferrer" className="btn btnSecondary">
                         Google Drive
                       </a>
                     )}
-                    {canEdit && it.gdriveLink && (
+                    {gdriveEnabled && canEdit && it.gdriveLink && (
                       <button
                         className="btn btnSecondary"
                         type="button"
@@ -1570,7 +1581,7 @@ function FilesPageContent() {
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    {it.gdriveLink && (
+                    {gdriveEnabled && it.gdriveLink && (
                       <a
                         href={it.gdriveLink}
                         target="_blank"
@@ -2714,7 +2725,7 @@ function FilesPageContent() {
                       >
                         Unduh
                       </a>
-                      {canEdit ? (
+                      {gdriveEnabled && canEdit ? (
                         <button
                           className="menuItem"
                           type="button"
@@ -2727,7 +2738,7 @@ function FilesPageContent() {
                           {gdriveBusyId === it._id ? 'Sinkron GDrive…' : 'Ambil Link GDrive'}
                         </button>
                       ) : null}
-                      {it.gdriveLink ? (
+                      {gdriveEnabled && it.gdriveLink ? (
                         <a
                           className="menuItem"
                           href={it.gdriveLink}
@@ -2740,7 +2751,7 @@ function FilesPageContent() {
                           Buka Link GDrive
                         </a>
                       ) : null}
-                      {canEdit && it.gdriveLink ? (
+                      {gdriveEnabled && canEdit && it.gdriveLink ? (
                         <button
                           className="menuItem"
                           type="button"
@@ -3168,29 +3179,31 @@ function FilesPageContent() {
                   <div style={{ color: 'var(--muted)', fontSize: 12 }}>OCR</div>
                   <div style={{ fontWeight: 700 }}>{detailItem.ocrStatus || '-'}</div>
                 </div>
-                <div style={{ width: 320 }}>
-                  <div style={{ color: 'var(--muted)', fontSize: 12 }}>Google Drive</div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ fontWeight: 700 }}>
-                      {detailItem.gdriveLink ? (
-                        <a href={detailItem.gdriveLink} target="_blank" rel="noreferrer">
-                          Buka Link
-                        </a>
-                      ) : (
-                        '-'
-                      )}
+                {gdriveEnabled ? (
+                  <div style={{ width: 320 }}>
+                    <div style={{ color: 'var(--muted)', fontSize: 12 }}>Google Drive</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ fontWeight: 700 }}>
+                        {detailItem.gdriveLink ? (
+                          <a href={detailItem.gdriveLink} target="_blank" rel="noreferrer">
+                            Buka Link
+                          </a>
+                        ) : (
+                          '-'
+                        )}
+                      </div>
+                      <button
+                        className="btn btnSecondary"
+                        type="button"
+                        onClick={() => copyWithToast('Link GDrive', String(detailItem.gdriveLink ?? ''))}
+                        style={{ padding: '5px 10px' }}
+                        disabled={!String(detailItem.gdriveLink ?? '').trim()}
+                      >
+                        Copy
+                      </button>
                     </div>
-                    <button
-                      className="btn btnSecondary"
-                      type="button"
-                      onClick={() => copyWithToast('Link GDrive', String(detailItem.gdriveLink ?? ''))}
-                      style={{ padding: '5px 10px' }}
-                      disabled={!String(detailItem.gdriveLink ?? '').trim()}
-                    >
-                      Copy
-                    </button>
                   </div>
-                </div>
+                ) : null}
               </div>
 
               <div style={{ height: 10 }} />
@@ -3232,17 +3245,19 @@ function FilesPageContent() {
                 >
                   Unduh
                 </button>
-                <button
-                  className="btn btnSecondary"
-                  type="button"
-                  disabled={gdriveBusyId === detailItem._id || gdriveUnlinkBusyId === detailItem._id}
-                  onClick={() => {
-                    void syncGdriveLink(detailItem);
-                  }}
-                >
-                  {gdriveBusyId === detailItem._id ? 'Sinkron GDrive…' : 'Ambil Link GDrive'}
-                </button>
-                {detailItem.gdriveLink ? (
+                {gdriveEnabled ? (
+                  <button
+                    className="btn btnSecondary"
+                    type="button"
+                    disabled={gdriveBusyId === detailItem._id || gdriveUnlinkBusyId === detailItem._id}
+                    onClick={() => {
+                      void syncGdriveLink(detailItem);
+                    }}
+                  >
+                    {gdriveBusyId === detailItem._id ? 'Sinkron GDrive…' : 'Ambil Link GDrive'}
+                  </button>
+                ) : null}
+                {gdriveEnabled && detailItem.gdriveLink ? (
                   <button
                     className="btn btnSecondary"
                     type="button"
